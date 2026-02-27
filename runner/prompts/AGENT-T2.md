@@ -12,8 +12,10 @@ Done when:
 {{DONE_WHEN}}
 
 Execution constraints:
-- Keep work limited to scope paths only.
-- Update `D:\Development\orchestrator\results.md` section `[{{TASK_ID}}]`.
+- Restore realtime graph visibility/behavior in the app flow.
+- Rename realtime-focused green section label to `Scope`.
+- Remove or collapse user-marked unnecessary display region(s) without breaking data context.
+- Workspace may already be dirty from other lanes; do not pause for unrelated pre-existing changes.
+- Only edit within scope paths and leave unrelated modified files untouched.
 - Keep edits UTF-8.
-- Connection switching reliability is priority: avoid regressions across iTNC530/TNC640.
-- Explicitly validate tool table + preset table load after switching machines multiple times.
+- Update `D:\\Development\\orchestrator\\results.md` section `[{{TASK_ID}}]`.

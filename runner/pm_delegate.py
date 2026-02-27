@@ -179,6 +179,31 @@ def _is_parallel_request(text: str) -> bool:
     return any(h in q for h in hints)
 
 
+def _is_claude_review_request(text: str) -> bool:
+    q = _normalize(text)
+    if not q:
+        return False
+    hints = [
+        "claude",
+        "sub agent",
+        "ux",
+        "design",
+        "consistency",
+        "structural",
+        "counterexample",
+        "review",
+        "final",
+        "rework",
+        "rerun",
+        "qa",
+        "검토",
+        "점검",
+        "재작업",
+        "재실행",
+    ]
+    return any(h in q for h in hints)
+
+
 def _target_count(intent: set[str], request: str, min_workers: int, max_workers: int, total_workers: int) -> int:
     cap = max(1, min(max_workers, total_workers))
     floor = max(1, min(min_workers, cap))
@@ -203,6 +228,7 @@ def _score_worker(worker: dict[str, Any], intent: set[str]) -> int:
 
     method_tags = _method_tags(method)
     role_goal_tags = _role_tags(role) | _text_tags(goal)
+    tags = method_tags | role_goal_tags
     score += len(method_tags & intent) * 18
     score += len(role_goal_tags & intent) * 10
 
@@ -220,6 +246,8 @@ def _score_worker(worker: dict[str, Any], intent: set[str]) -> int:
 
 
 def _assign_role_from_method(worker: dict[str, Any]) -> None:
+    if bool(worker.get("fixed_role", False)):
+        return
     method = _normalize(str(worker.get("work_method", "")))
     if not method:
         return
@@ -261,6 +289,17 @@ def _select_workers(
     target = _target_count(intent, request, min_workers, max_workers, len(eligible))
     ranked = sorted(eligible, key=lambda i: _score_worker(workers[i], intent), reverse=True)
     selected = ranked[:target]
+
+    # Ensure fixed-role Claude review lane stays reusable when PM asks for review/rework.
+    if _is_claude_review_request(request):
+        fixed_review_workers = [
+            i
+            for i in eligible
+            if bool(workers[i].get("fixed_role", False))
+        ]
+        for i in fixed_review_workers:
+            if i not in selected:
+                selected.append(i)
 
     if len(selected) < min_workers:
         for i in ranked:

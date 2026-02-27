@@ -12,8 +12,10 @@ Done when:
 {{DONE_WHEN}}
 
 Execution constraints:
-- Update `D:\Development\orchestrator\results.md` section `[{{TASK_ID}}]` with changed files, tests, risks.
+- App entry should provide "connect all machines?" flow and start all machine connections when confirmed.
+- App must expose server ON/OFF/Restart controls directly.
+- Keep architecture aligned with single collector principle (avoid duplicate machine polling paths).
+- Workspace may already be dirty from other lanes; do not pause for unrelated pre-existing changes.
+- Only edit within scope paths and leave unrelated modified files untouched.
 - Keep edits UTF-8.
-- Do not touch unrelated repos/files.
-- Focus on dashboard visibility correctness (active rows, logs, progress refresh).
-- Verify with concrete run command(s) and include observed API/UI evidence.
+- Update `D:\\Development\\orchestrator\\results.md` section `[{{TASK_ID}}]` with changed files, commands, and residual risks.

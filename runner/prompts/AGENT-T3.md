@@ -12,7 +12,9 @@ Done when:
 {{DONE_WHEN}}
 
 Execution constraints:
-- Update `D:\Development\orchestrator\results.md` section `[{{TASK_ID}}]`.
+- Align app admin capabilities with web parity: user/permission, group, machine registration.
+- Keep web deployment as monitor-first/read-only for regular users.
+- Ensure admin data and APIs remain consistent across app/web.
 - Keep edits UTF-8.
-- Enforce coolant mapping labels exactly: M17=out-air, M8=out-oil, M18=in-oil.
-- Confirm mapping consistency on both machining_auto and machining_monitor_server paths.
+- Update `D:\\Development\\orchestrator\\results.md` section `[{{TASK_ID}}]`.
+

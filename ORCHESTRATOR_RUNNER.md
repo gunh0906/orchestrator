@@ -72,6 +72,13 @@ Open:
 http://127.0.0.1:8877
 ```
 
+GUI controller (same dashboard tone):
+
+```powershell
+cd D:\Development\orchestrator
+.\run_server_control_gui.cmd
+```
+
 ## Runner folder organization
 Archive legacy ORCH task/prompt cards and keep AGENT files active:
 

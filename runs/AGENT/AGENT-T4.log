@@ -1,0 +1,32 @@
+The AGENT-T4 UX check report is complete. Here's a summary of what was found and the final verdict:
+
+---
+
+## AGENT-T4 UX Check — Final Report
+
+**Verdict: `REWORK`**  
+**RERUN_OWNER:** `AGENT-T4 [Sub Agent: Claude]`
+
+---
+
+### Critical Findings
+
+| ID | Severity | Location | Issue |
+|---|---|---|---|
+| SD-1 / UX-1 | CRITICAL | `styles/color_tokens.py` L28-58 | `donut_*`/`timeline_*` RGBA tokens are near-white (#f2f5fb, #f1f5f9) — paint bright white boxes on dark navy app, undoing the entire AGENT-T4 dark theme |
+| UX-2 / SD-2 | HIGH | `runtime/controller.py:374-420` | `_restore_scope_live_graph()` always returns early on fresh session (mode=auto + no manual channels = normal start state) — "restore realtime graph" PM requirement only partially met |
+| UX-3 / SD-3 | MEDIUM | `runtime_info_dialog.py:1697` + `controller.py:414` | `tab_history` labeled "가동률 로그" at construction, then overwritten to "Monitor/Admin" by controller — label flicker; wrong label if controller is not attached |
+| UX-5 | MEDIUM | `controller.py:327-335` | `서버OFF`/`재시작` use same `RuntimeInlineBtn` style as safe buttons — no danger visual cue |
+| UX-6 | MEDIUM | `web/static/app.js:59-72` | Session expiry during web form submit silently appears to succeed (redirect→HTML→`body={}` → no error) |
+| SD-6 | LOW | `web/static/app.js:311-320` | `loadRealtime()` has no inflight guard — rapid tab switching can cause concurrent polling |
+
+### PM Feedback Requirements Status
+- **Server ON/OFF**: ✅ DONE  
+- **Scope tab naming**: ✅ DONE  
+- **Ask connect-all on entry**: ✅ DONE  
+- **Web read-only monitor**: ✅ DONE  
+- **Restore realtime graph**: ⚠️ PARTIAL  
+- **App like web monitor/admin**: ⚠️ PARTIAL
+
+### RERUN_SCOPE
+`styles/color_tokens.py` (donut/timeline RGBA → dark equivalents), `runtime/controller.py` (`_restore_scope_live_graph`, fleet button danger styling), `diagnostics/runtime_info_dialog.py` (tab_history initial label), `web/static/app.js` (loadRealtime inflight guard, session-expiry detection)

@@ -12,8 +12,12 @@ Done when:
 {{DONE_WHEN}}
 
 Execution constraints:
-- Implement SQLite-backed auth flow with seeded account `admin/1234` on first run.
-- Add themed login dialog matching monitor dark concept; include company logo asset usage.
-- Keep runtime monitor behavior unchanged after successful login.
-- Update `D:\Development\orchestrator\results.md` section `[{{TASK_ID}}]`.
+- Validate these scenarios with executable commands and concrete outputs:
+  1) app server ON/OFF + startup flow
+  2) connect-all confirmation and start behavior
+  3) realtime graph visible and Scope naming reflected
+  4) app admin settings availability
+- Summarize pass/fail, changed files, and residual risks.
+- Update both `D:\\Development\\orchestrator\\results.md` and `D:\\Development\\orchestrator\\status_report.md`.
 - Keep edits UTF-8.
+

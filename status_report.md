@@ -114,3 +114,24 @@
 - Dashboard additions:
   - PM status card wired (`/api/pm`): current ORCH / last update / progress.
   - Trend sparkline scaling updated for better visibility at low values.
+
+## [2026-02-27 / AGENT-T4 UX Check — Sub Agent: Claude]
+- Lane: AGENT-T4 (UX Review / QA Gate)
+- Status: COMPLETE — UX check report written to `results.md [AGENT-T4]`
+- PM Feedback requirements reviewed:
+  - Server ON/OFF: DONE
+  - Scope tab naming: DONE
+  - Ask connect-all on entry: DONE
+  - Web read-only: DONE
+  - Restore realtime graph: PARTIAL
+  - App behaves like web monitor/admin: PARTIAL
+- Critical findings:
+  1. [CRITICAL SD-1] `donut_*/timeline_*` RGBA color tokens are light-theme (~white) while app theme is dark — visual regression from AGENT-T4 dark pass
+  2. [HIGH UX-2/SD-2] `_restore_scope_live_graph()` is no-op on fresh session (returns early if mode=auto, no manual channels — which is always true at start)
+  3. [MEDIUM UX-3/SD-3] `tab_history` label dual-defined: dialog constructor says "가동률 로그", controller overrides to "Monitor/Admin" — fragile dependency
+  4. [MEDIUM UX-5] Fleet OFF/restart buttons no danger-visual differentiation from safe buttons
+  5. [MEDIUM UX-6] Web session expiry silently "succeeds" on form submit (redirect → 200 HTML → body={} → no error)
+  6. [LOW SD-6] `loadRealtime()` lacks inflight guard for concurrent polling
+- VERDICT: **REWORK**
+- RERUN_OWNER: AGENT-T4 [Sub Agent: Claude]
+- RERUN_SCOPE: color_tokens.py (donut/timeline RGBA), controller.py (_restore_scope_live_graph, _sync_fleet_controls), runtime_info_dialog.py (tab_history label), app.js (loadRealtime inflight guard, api session-expiry detection)

@@ -1,9 +1,9 @@
-param(
-    [string]$Host = "127.0.0.1",
-    [int]$Port = 8877
-)
+Param()
 
 $ErrorActionPreference = "Stop"
+$root = $PSScriptRoot
+Set-Location $root
+
 $pythonExe = "python"
 try {
     $pyPath = (Get-Command python -ErrorAction Stop).Source
@@ -17,4 +17,4 @@ try {
     $pythonExe = "python"
 }
 
-& $pythonExe "$PSScriptRoot\dashboard.py" --host $Host --port $Port
+& $pythonExe "$root\server_control_gui.py"

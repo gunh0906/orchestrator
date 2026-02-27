@@ -4,163 +4,157 @@
   "defaults": {
     "model": "gpt-5.3-codex",
     "reasoning_effort": "xhigh",
-    "global_prompt": "",
-    "sandbox": "workspace-write",
+    "global_prompt": "Second-pass refactor per PM feedback: app must behave like web monitor/admin, include server ON/OFF, restore realtime graph, add Scope tab naming, and ask connect-all on entry. Web remains read-only monitor.",
+    "sandbox": "danger-full-access",
     "approval": "never",
     "search": false,
-    "read_only_guard": true,
-    "history_readonly_guard": true,
+    "read_only_guard": false,
+    "history_readonly_guard": false,
     "claude_cmd": "claude",
-    "claude_continue": true,
+    "claude_continue": false,
     "claude_args": [
-      "--print",
-      "{prompt}"
+      "--print"
     ],
-    "claude_stdin": false,
+    "claude_stdin": true,
+    "claude_auto_approve": true,
+    "claude_permission_mode": "bypassPermissions",
     "single_run_dir": true,
     "clean_run_dir": true,
     "prune_legacy_runs": true,
-    "pm_last_request": "",
-    "pm_last_selected": [],
-    "claude_auto_approve": true,
-    "claude_permission_mode": "bypassPermissions",
-    "pm_last_selected_count": 2
+    "codex_dangerously_bypass": true,
+    "pm_last_request": "screenshot ui parity, responsive machine cards, split scope vs utilization connection, server/home/fanuc",
+    "pm_last_selected": [
+      "AGENT-T1",
+      "AGENT-T2",
+      "AGENT-T3",
+      "AGENT-T4",
+      "AGENT-T5"
+    ],
+    "pm_last_selected_count": 5
   },
   "workers": [
     {
       "task_id": "AGENT-T1",
-      "enabled": false,
+      "enabled": true,
       "engine": "codex",
       "owner": "Codex-A",
       "role": "Integration",
       "work_method": "integration",
-      "repo": "orchestrator",
+      "repo": "machining_monitor_server",
       "scope_paths": [
-        "orchestrator/web/**",
-        "orchestrator/runner/dispatch.py",
-        "orchestrator/runner/tasks.AGENT.json",
-        "orchestrator/status_report.md",
-        "orchestrator/inbox.md"
+        "machining_monitor_server/app.py",
+        "machining_monitor_server/__main__.py",
+        "machining_monitor_server/runtime/**",
+        "machining_monitor_server/server_control_gui.py",
+        "machining_monitor_server/run_server_control_gui.ps1",
+        "machining_monitor_server/run_server_control_gui.cmd",
+        "orchestrator/results.md",
+        "orchestrator/status_report.md"
       ],
-      "goal": "Diagnose worker visibility and make dashboard reliably show active workers/logs/progress.",
+      "goal": "??癲ル슣???????鸚??? ??꾩룆?亦????モ?????곕쿊 癲ル슢?????琉뮻???筌먦끉裕?ON/OFF ??れ삀?????????????????癰궽블뀬??筌먲퐢?? ??癲ル슣????????ш끽維?????щ４ ???ㅼ뒦???嶺뚮Ĳ?됮?????ш끽維????ㅼ뒦????筌믨퀣援??癲ル슣????誘⑦←뵳??",
       "done_when": [
-        "Dashboard always shows active worker rows while jobs are running.",
-        "Log View opens in dedicated modal/window and does not overlay the whole main page.",
-        "Worker state, activity, and latest update timestamp refresh consistently."
+        "?濚밸Ŧ??????筌먦끉裕?ON/OFF/???????????좊읈??濚왿몾???",
+        "??癲ル슣????????ш끽維?????щ４ ???ㅼ뒦?????????醫됲뀰?? ?嶺뚮Ĳ?됮?????ш끽維?????щ４ ???ㅼ뒦?????筌믨퀣援??筌먲퐢??",
+        "????れ삀???????깃탾????癲ル슢?꾤땟????????숇쭡????繹먮봾萸??筌먲퐢??"
       ],
       "prompt_file": "orchestrator/runner/prompts/AGENT-T1.md"
     },
     {
       "task_id": "AGENT-T2",
-      "enabled": false,
+      "enabled": true,
       "engine": "codex",
       "owner": "Codex-B",
-      "role": "Core/Connection",
-      "work_method": "connection",
-      "repo": "machining_auto",
+      "role": "Backend/Runtime",
+      "work_method": "runtime",
+      "repo": "machining_monitor_server",
       "scope_paths": [
-        "machining_auto/machine_connection/connection_manager.py",
-        "machining_auto/machine_connection/connectors/heidenhain_lsv2.py",
-        "machining_auto/machine_connection/heidenhain_tool_table.py",
-        "machining_auto/machine_connection/parse/preset_service.py",
-        "machining_auto/machine_connection/parse/tool_table_service.py"
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
+        "machining_monitor_server/runtime/controller.py",
+        "machining_monitor_server/web/static/index.html",
+        "machining_monitor_server/web/static/app.js",
+        "machining_monitor_server/web/static/styles.css",
+        "orchestrator/results.md",
+        "orchestrator/status_report.md"
       ],
-      "goal": "Fix machine monitor connection reliability and tool/preset loading reliability on problematic machines.",
+      "goal": "???怨뺣빰????숆강筌????怨뚮옖??逾???れ삀?????怨뚮옖甕걔????寃뗏? ??れ삀??????怨뺣빰?????굿???縕?袁〓뭄????ㅼ굡??癲ル슢?뤸뤃?녿닱??Scope???怨뚮뼚??濡ろ뜑???? ??됰씭??????筌?六????ㅼ굡??? ??癰귙끋源????獒???⑤베源???筌먲퐢??",
       "done_when": [
-        "INSPECT login/cwd table-path noise is suppressed or fallback-handled.",
-        "Switching across problem machines keeps connection stable without thread leak warnings.",
-        "Tool table/preset table loads recover consistently after machine switching."
+        "?濚밸Ŧ???????怨뺣빰????숆강筌???? ?嶺뚮Ĳ?놅쭕???筌?六??筌먲퐢??",
+        "UI 癲ル슢?뤸뤃?녿닱????????怨뺣빰????れ삀??????ㅼ굡???Scope????癰궽뀀탿??筌먲퐢??",
+        "?????? 癲ル슣???嶺뚮쮳?년뵲 ??됰씭???????ㅼ굡?????癰귙끋源???⑤베源???筌뚯슦苑???釉먮뻤?????縕????⑤챷???"
       ],
       "prompt_file": "orchestrator/runner/prompts/AGENT-T2.md"
     },
     {
       "task_id": "AGENT-T3",
-      "enabled": false,
+      "enabled": true,
       "engine": "codex",
       "owner": "Codex-C",
-      "role": "Backend/Runtime",
-      "work_method": "runtime",
-      "repo": "machining_auto",
+      "role": "Core/Connection",
+      "work_method": "connection",
+      "repo": "machining_monitor_server",
       "scope_paths": [
-        "machining_auto/machine_connection/diagnostics/heidenhain_runtime_info.py",
-        "machining_auto/machine_connection/connection_manager.py",
-        "machining_monitor_server/diagnostics/heidenhain_runtime_info.py",
-        "machining_monitor_server/runtime/controller.py"
+        "machining_monitor_server/web/**",
+        "machining_monitor_server/config_store.py",
+        "machining_monitor_server/connection_settings_dialog.py",
+        "machining_monitor_server/diagnostics/runtime_history_store.py"
       ],
-      "goal": "Enforce iTNC530 coolant mapping M17 out-air, M8 out-oil, M18 in-oil consistently across monitor paths.",
+      "goal": "?濚밸Ŧ????筌먲퐣?????굿?域밸Ŧ遊?????源놁젳(??援????遺쎌뒋?????숆강筌?쓣爾?怨댁뒋???????щ４?濚밸Ŧ援욃ㅇ?????癰궽블뀬???寃뗏? ??꾩룆?亦?????곕럡?????굿????れ삀???parity??癲ル슢????? ????? ?釉뚰???濚욌꼬?댄꺍??read-only monitor) ???.",
       "done_when": [
-        "Both machining_auto and monitor_server resolve iTNC530 coolant labels identically.",
-        "Live summary and detail view show the same mapping outputs.",
-        "No mapping regression for TNC640 path."
+        "?濚밸Ŧ??????援????遺쎌뒋?????숆강筌?쓣爾?怨댁뒋???????щ４?濚밸Ŧ援욃ㅇ????쒋닪?????좊읈??濚왿몾???",
+        "???굿?????Β????癲ル슢?꾤땟???? ??꾩룆?亦??嶺뚮ㅏ援???筌먲퐢??",
+        "????? ?釉뚰???濚욌꼬?댄꺍??????깃탾???⑥???????筌먲퐢??"
       ],
       "prompt_file": "orchestrator/runner/prompts/AGENT-T3.md"
     },
     {
       "task_id": "AGENT-T4",
-      "enabled": false,
+      "enabled": true,
       "engine": "claude-cli",
-      "owner": "Claude",
-      "role": "UI/Design",
+      "owner": "[Sub Agent: Claude]",
+      "role": "UX/Counterexample/DesignConsistency/StructureReview",
       "work_method": "ui",
       "repo": "machining_monitor_server",
       "scope_paths": [
+        "machining_monitor_server/styles/**",
         "machining_monitor_server/diagnostics/runtime_info_dialog.py",
-        "machining_monitor_server/styles/runtime_monitor.qss",
-        "machining_monitor_server/app.py"
+        "machining_monitor_server/web/static/index.html",
+        "machining_monitor_server/web/static/styles.css",
+        "machining_monitor_server/web/static/app.js",
+        "machining_monitor_server/app.py",
+        "orchestrator/results.md",
+        "orchestrator/status_report.md"
       ],
-      "goal": "Apply dark concept layout on main page and move secondary information to detail page.",
+      "goal": "Sub Agent: Claude performs UX issue review, counterexample scenarios, design consistency audit, and structural defect analysis; then sends final check report to PM for rerun decision.",
       "done_when": [
-        "Main page uses dark concept palette and hierarchy like provided reference.",
-        "Secondary/verbose info moved to detail page to reduce clutter.",
-        "No overlap on 2K/4K and controls remain usable."
+        "UX ??? ??? ???? ?? ?? ???? ????.",
+        "?? ????(??/??/??/??? ???)? ??? ?? ??? ????.",
+        "??? ??? ??? ??? ?? ?? ??? PM?? ????.",
+        "PM? ??? ?? ?? ? ?? AGENT-T4(Sub Agent: Claude) ??? ??? ?????."
       ],
       "prompt_file": "orchestrator/runner/prompts/AGENT-T4.md",
-      "allow_token_retry": true
+      "fixed_role": true
     },
     {
       "task_id": "AGENT-T5",
-      "enabled": false,
+      "enabled": true,
       "engine": "codex",
       "owner": "Codex-D",
-      "role": "Auth/Login",
-      "work_method": "auth",
-      "repo": "machining_monitor_server",
-      "scope_paths": [
-        "machining_monitor_server/app.py",
-        "machining_monitor_server/runtime/**",
-        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
-        "machining_monitor_server/styles/runtime_monitor.qss",
-        "machining_monitor_server/assets/**"
-      ],
-      "goal": "Add SQLite-backed login flow and themed login dialog with company logo. Seed admin/1234.",
-      "done_when": [
-        "Login required before entering monitor server UI.",
-        "Auth data stored in SQLite with seeded admin/1234 on first run.",
-        "Themed login dialog matches dark concept and shows company logo."
-      ],
-      "prompt_file": "orchestrator/runner/prompts/AGENT-T5.md"
-    },
-    {
-      "task_id": "AGENT-T6",
-      "enabled": false,
-      "engine": "codex",
-      "owner": "Codex-E",
       "role": "Validation/QA",
       "work_method": "validate",
       "repo": "machining_monitor_server",
       "scope_paths": [
         "machining_monitor_server/**",
-        "machining_auto/**",
         "RUN_COMMANDS.md",
+        "orchestrator/results.md",
         "orchestrator/status_report.md"
       ],
-      "goal": "Run targeted validation for tasks 1-5 and produce command/result report with pass/fail checklist.",
+      "goal": "2癲???釉먮윥???????숆강筌???Scope/??筌먦끉裕꿕N/??ш끽維?????щ４???ㅼ뒦?????굿?域밸Ŧ遊????源놁젳) ???? ?濡ろ떟?癲????濡ろ뜏??????뽮덫???? ???얜Ŧ類??筌먲퐢??",
       "done_when": [
-        "Validation commands are executed and outputs summarized.",
-        "Connection/tool-preset/coolant/login/ui scenarios are each explicitly verified.",
-        "Report includes reproducible run commands and residual issues."
+        "???????筌?猷?域밸Ŧ遊욘쾮?????덈틖 ?濡ろ뜏????뽰씀? pass/fail???嶺뚮㉡?섌걡??筌먲퐢??",
+        "?濡ろ뜏???? ??釉먯뒠???域밸Ŧ遊얕짆??? orchestrator/results.md?? status_report.md???袁⑸즵????筌먲퐢??",
+        "PM ????筌먲퐡???筌?諭???袁⑸즴??繞??嶺뚮Ĳ?됮???좊읈??濚왿몾?????ㅺ컼?얜쑚???嶺뚮㉡?섌걡??筌먲퐢??"
       ],
-      "prompt_file": "orchestrator/runner/prompts/AGENT-T6.md"
+      "prompt_file": "orchestrator/runner/prompts/AGENT-T5.md"
     }
   ]
 }

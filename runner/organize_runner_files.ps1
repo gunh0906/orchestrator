@@ -57,7 +57,7 @@ $readme = @'
 
 Active files remain in `runner/`:
 - `tasks.AGENT.json`
-- `prompts/AGENT-T1.md` ... `prompts/AGENT-T10.md`
+- `prompts/AGENT-T1.md` ... `prompts/AGENT-T5.md`
 '@
 
 if ($WhatIf) {

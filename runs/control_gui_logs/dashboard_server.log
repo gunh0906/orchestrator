@@ -1,0 +1,18 @@
+
+[2026-02-27T15:12:07] START powershell -NoProfile -ExecutionPolicy Bypass -File D:\Development\orchestrator\run_dashboard.ps1 -Host 127.0.0.1 -Port 8877
+Host 변수는 읽기 전용이거나 상수이므로 덮어쓸 수 없습니다.
+    + CategoryInfo          : WriteError: (Host:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+
+[2026-02-27T15:12:36] START powershell -NoProfile -ExecutionPolicy Bypass -File D:\Development\orchestrator\run_dashboard.ps1 -Host 127.0.0.1 -Port 8877
+Host 변수는 읽기 전용이거나 상수이므로 덮어쓸 수 없습니다.
+    + CategoryInfo          : WriteError: (Host:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+
+[2026-02-27T15:56:38] START powershell -NoProfile -ExecutionPolicy Bypass -File D:\Development\orchestrator\run_dashboard.ps1 -Host 127.0.0.1 -Port 8877
+Host 변수는 읽기 전용이거나 상수이므로 덮어쓸 수 없습니다.
+    + CategoryInfo          : WriteError: (Host:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 

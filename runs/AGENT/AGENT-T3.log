@@ -1,0 +1,1090 @@
+2026-02-27T09:01:09.450380Z  WARN codex_core::shell_snapshot: Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell
+OpenAI Codex v0.105.0 (research preview)
+--------
+workdir: D:\Development\machining_monitor_server
+model: gpt-5.3-codex
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: xhigh
+reasoning summaries: auto
+session id: 019c9e54-9593-7823-b756-68a20abe7448
+--------
+user
+Second-pass refactor per PM feedback: app must behave like web monitor/admin, include server ON/OFF, restore realtime graph, add Scope tab naming, and ask connect-all on entry. Web remains read-only monitor.
+
+---
+
+You are executing task AGENT-T3.
+
+Owner: Codex-C
+Repo: machining_monitor_server
+Scope paths (do not edit outside):
+- machining_monitor_server/web/**
+- machining_monitor_server/config_store.py
+- machining_monitor_server/connection_settings_dialog.py
+- machining_monitor_server/diagnostics/runtime_history_store.py
+
+Goal:
+?濚밸Ŧ????筌먲퐣?????굿?域밸Ŧ遊?????源놁젳(??援????遺쎌뒋?????숆강筌?쓣爾?怨댁뒋???????щ４?濚밸Ŧ援욃ㅇ?????癰궽블뀬???寃뗏? ??꾩룆?亦?????곕럡?????굿????れ삀???parity??癲ル슢????? ????? ?釉뚰???濚욌꼬?댄꺍??read-only monitor) ???.
+
+Done when:
+- ?濚밸Ŧ??????援????遺쎌뒋?????숆강筌?쓣爾?怨댁뒋???????щ４?濚밸Ŧ援욃ㅇ????쒋닪?????좊읈??濚왿몾???
+- ???굿?????Β????癲ル슢?꾤땟???? ??꾩룆?亦??嶺뚮ㅏ援???筌먲퐢??
+- ????? ?釉뚰???濚욌꼬?댄꺍??????깃탾???⑥???????筌먲퐢??
+
+Execution constraints:
+- Align app admin capabilities with web parity: user/permission, group, machine registration.
+- Keep web deployment as monitor-first/read-only for regular users.
+- Ensure admin data and APIs remain consistent across app/web.
+- Keep edits UTF-8.
+- Update `D:\\Development\\orchestrator\\results.md` section `[AGENT-T3]`.
+mcp startup: no servers
+
+thinking
+**Planning user request handling**
+codex
+I’ll inspect the current app/web admin and monitor flows in the allowed paths, then map what’s missing for this second-pass parity (server ON/OFF, realtime graph restore, Scope tab naming, and connect-all prompt on entry) before patching.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-ChildItem -Recurse -File' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'rg -n "server ON|server off|realtime|real[- ]?time|scope|connect-all|connect all|monitor|admin|permission|group|machine" web config_store.py connection_settings_dialog.py diagnostics/runtime_history_store.py' in D:\Development\machining_monitor_server succeeded in 255ms:
+connection_settings_dialog.py:23:from machining_monitor_server.config_store import (
+connection_settings_dialog.py:25:    load_monitor_connections,
+connection_settings_dialog.py:31:    """Connection-only settings dialog for monitor_server."""
+connection_settings_dialog.py:36:        machine_list: list[str],
+connection_settings_dialog.py:37:        machine_conn_map: dict[str, dict[str, Any]],
+connection_settings_dialog.py:46:        self._machine_list: list[str] = [str(x or "").strip() for x in list(machine_list or []) if str(x or "").strip()]
+connection_settings_dialog.py:49:            for k, v in dict(machine_conn_map or {}).items()
+connection_settings_dialog.py:53:        self._selected_machine = ""
+connection_settings_dialog.py:56:        self._reload_machine_combo(prefer=self._machine_list[0] if self._machine_list else "")
+connection_settings_dialog.py:111:        row_machine = QHBoxLayout()
+connection_settings_dialog.py:112:        row_machine.setContentsMargins(0, 0, 0, 0)
+connection_settings_dialog.py:113:        row_machine.setSpacing(8)
+connection_settings_dialog.py:114:        lbl_machine = QLabel("설비", body)
+connection_settings_dialog.py:115:        lbl_machine.setObjectName("RotateMetaLabel")
+connection_settings_dialog.py:116:        self.cb_machine = QComboBox(body)
+connection_settings_dialog.py:117:        self.cb_machine.setObjectName("TopBarMachineCombo")
+connection_settings_dialog.py:118:        self.cb_machine.setMinimumWidth(220)
+connection_settings_dialog.py:119:        self.cb_machine.currentIndexChanged.connect(self._on_machine_changed)
+connection_settings_dialog.py:123:        row_machine.addWidget(lbl_machine, 0)
+connection_settings_dialog.py:124:        row_machine.addWidget(self.cb_machine, 1)
+ succeeded in 360ms:
+
+
+    디렉터리: D:\Development\machining_monitor_server
+
+
+Mode                 LastWriteTime         Length Name                                                                 
+----                 -------------         ------ ----                                                                 
+-a----        2026-02-27   오후 5:06           5663 app.py                                                               
+-a----        2026-02-25   오전 9:03           7354 config_store.py                                                      
+-a----        2026-02-24   오후 5:14          12449 connection_settings_dialog.py                                        
+-a----        2026-02-25   오전 9:02           3205 DEPENDENCY_MAP_PHASE1.md                                             
+-a----        2026-02-24   오후 5:26          25246 focas_connector.py                                                   
+-a----        2026-02-24  오전 11:08         208896 Fwlib32.dll                                                          
+-a----        2026-02-24   오후 1:52         743984 Fwlib64.dll                                                          
+-a----        2026-02-24   오후 1:52        1322544 fwlibe64.dll                                                         
+-a----        2026-02-26   오후 3:42            540 ORCH-0004-T6.md                                                      
+-a----        2026-02-26   오후 4:43            528 ORCH-0005-T5.md                                                      
+-a----        2026-02-25   오전 9:08           1435 PATH_POLICY.md                                                       
+-a----        2026-02-25   오전 9:00           3566 path_policy.py                                                       
+-a----        2026-02-27   오후 4:06           5671 plan.md                                                              
+
+thinking
+**Clarifying scope and app roles**
+codex
+I found existing web admin endpoints/UI in `web/*`; next I’m reading the task notes (`plan.md`, orchestrator docs) and the scoped Python modules to pin the exact deltas needed for T3 without touching out-of-scope files.
+
+thinking
+**Searching for AGENT-T3 references**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path plan.md -TotalCount 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'rg -n "AGENT-T3|T3|connect-all|Scope|realtime|server ON|ON/OFF|read-only|parity|PM" plan.md orchestrator/results.md ORCH-0004-T6.md ORCH-0005-T5.md' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path orchestrator/results.md -TotalCount 260' in D:\Development\machining_monitor_server succeeded in 302ms:
+# Single-Collector Architecture Refactor Plan
+
+## Goal
+Replace the N-process fleet (one `server_main` process per machine) with a single
+`fleet_main` process that runs all `HeadlessRuntimeService` instances inside one
+`QCoreApplication`. Web server stays unchanged (read-only). `server_control_gui.py`
+detects the new process type.
+
+## Current vs. Target
+
+| | Before | After |
+|---|---|---|
+| Collector processes | N (one per machine) | 1 (all machines) |
+| Web server | 1 | 1 (unchanged) |
+| Total processes | N+1 | 2 |
+| Orchestrator input | per-machine loop | load-all-machines |
+
+## Files Changed
+
+### 1. NEW ??`fleet_main.py`
+ succeeded in 287ms:
+[TASK] ORCH-0004-T5 RESULT
+Status: Completed
+
+Implemented:
+- Admin per-machine address add/edit/delete persists to runtime DB.
+- Mapping config reloads from DB and is applied as runtime mapping source.
+- Telemetry mapping load/save now uses DB-backed machine mapping config and signal rows.
+
+Validation:
+- python -m py_compile diagnostics/runtime_history_store.py diagnostics/telemetry_mapping.py diagnostics/runtime_info_dialog.py
+- DB smoke: save_machine_mapping/load_machine_mapping round-trip for a temporary machine, then cleanup.
+
+[TASK] ORCH-0005-T3 RESULT
+Status: Completed
+
+Implemented:
+- Utilization-tab refresh now anchors to runtime DB (`get_latest_runtime_sample`) instead of live snapshot payload state.
+- A single selected-period context (`sel_start_ep`/`sel_end_ep`/`sel_label`) now drives fleet table, KPI cards, and timeline together.
+- Fleet utilization table refresh now uses selected-range DB aggregates (`RUN`, `CUT`, `Util(obs)`, `Util(period)`, `Samples`) and updates fleet KPI cards from the same range totals.
+- Timeline open-segment labeling no longer depends on live snapshot program/run state; it now follows selected-range + DB-time recency only.
+ succeeded in 407ms:
+ORCH-0004-T6.md:6:## Scope
+ORCH-0005-T5.md:9:Scope paths:
+orchestrator/results.md:13:[TASK] ORCH-0005-T3 RESULT
+orchestrator/results.md:68:- Added env/config-based realtime permission gate:
+orchestrator/results.md:69:  - `MACHINING_MONITOR_ALLOW_REALTIME=1` enables realtime tab/features.
+orchestrator/results.md:70:  - Safe default denies realtime access unless explicitly granted.
+orchestrator/results.md:71:  - `MACHINING_MONITOR_ROLE` fallback supports role defaults (`web`/`limited` => utilization-only, `admin`/`full` => realtime allowed when explicit flag is not set).
+orchestrator/results.md:72:- `app.py` now resolves realtime permission and passes it to `RuntimeInfoDialog` without changing existing CLI args.
+orchestrator/results.md:74:  - exposes `is_realtime_access_enabled()`,
+orchestrator/results.md:75:  - removes realtime UI when permission is denied,
+orchestrator/results.md:76:  - blocks full PLC snapshot escalation and runtime mapping payload when realtime is denied.
+orchestrator/results.md:77:- `MonitorServerController` now mirrors the same permission boundary and skips realtime scan/profile fallback logic in limited mode.
+orchestrator/results.md:82:- Explicit realtime allow (overrides role fallback):
+orchestrator/results.md:84:- Explicit realtime deny (safe override):
+orchestrator/results.md:87:[TASK] ORCH-0005-T3 RESULT (Codex-C)
+plan.md:6:`QCoreApplication`. Web server stays unchanged (read-only). `server_control_gui.py`
+plan.md:130:- `web/server.py` — already read-only; no changes
+
+thinking
+**Assessing web app for AGENT-T3**
+codex
+I’ve confirmed prior ORCH tasks and will now inspect `web/server.py` + `web/static/*` plus the scoped config/runtime store modules to implement this pass strictly in-scope.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/static/app.js | Select-Object -Skip 260 -First 320' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/server.py -TotalCount 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/server.py | Select-Object -Skip 260 -First 320' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/static/app.js -TotalCount 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/static/index.html -TotalCount 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path config_store.py -TotalCount 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/static/styles.css -TotalCount 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path connection_settings_dialog.py -TotalCount 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path diagnostics/runtime_history_store.py -TotalCount 260' in D:\Development\machining_monitor_server succeeded in 1.05s:
+    const dbNode = $('db-path');
+    if (dbNode) {
+      if (ov.db_path) {
+        dbNode.textContent = `DB: ${ov.db_path}`;
+        dbNode.style.display = '';
+      } else {
+        dbNode.textContent = '';
+        dbNode.style.display = 'none';
+      }
+    }
+
+    const groupSel = $('group-select');
+    const curGroup = String(groupSel.value || '');
+    const groups = Array.isArray(ov.groups) ? ov.groups : [];
+    groupSel.innerHTML = '<option value="">?꾩껜</option>' + groups.map((g) => {
+      const v = String(g || '').trim();
+      return `<option value="${esc(v)}">${esc(v)}</option>`;
+    }).join('');
+    groupSel.value = curGroup;
+
+ succeeded in 984ms:
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import secrets
+import sys
+import threading
+import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from http import HTTPStatus
+from http.cookies import SimpleCookie
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs, urlparse
+
+from machining_monitor_server.diagnostics.runtime_history_store import (
+ succeeded in 985ms:
+(() => {
+  const state = {
+    role: String(window.__MM_ROLE || 'viewer').toLowerCase(),
+    initialTab: String(window.__MM_TAB || 'fleet').toLowerCase(),
+    permissions: { realtime: false, admin: false },
+    realtimeTimer: null,
+    selectedUser: '',
+    collapsedGroups: {},
+    lastOverview: null,
+    adminView: 'users',
+    groupRows: [],
+    groupSelectedMachines: new Set(),
+    groupDrag: { active: false, startIndex: -1, base: new Set() },
+    selectedMachineId: '',
+  };
+
+  const STATUS_ORDER = ['stop', 'idle', 'running', 'alarm', 'offline', 'manual'];
+  const STATUS_LABELS = {
+    stop: '?뺤?',
+    idle: '?湲?,
+ succeeded in 899ms:
+:root {
+  --bg-1: #091426;
+  --bg-2: #0f1f3c;
+  --panel: #12264a;
+  --panel-2: #0f2040;
+  --card: #162d57;
+  --line: #2c4678;
+  --text: #ecf4ff;
+  --muted: #b7c8ea;
+  --accent: #61d7ff;
+  --accent-2: #4f82ff;
+  --ok: #32d296;
+  --warn: #f4b84f;
+  --danger: #ff5f73;
+  --offline: #6b7ea8;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+ succeeded in 834ms:
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+from typing import Any
+from pathlib import Path
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QFileDialog,
+    QVBoxLayout,
+ succeeded in 898ms:
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Machining Monitor</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo">A</div>
+        <div class="brand-text">A-TECH SOLUTION | 설비 종합 관제</div>
+      </div>
+      <div class="top-kpi">
+        <div class="top-kpi-item"><span>ACTIVE</span><strong id="kpi-active">0</strong></div>
+        <div class="top-kpi-item"><span>AVG OEE</span><strong id="kpi-avg">0.0%</strong></div>
+        <div class="top-kpi-item"><span>ALERTS</span><strong id="kpi-alerts">0</strong></div>
+      </div>
+ succeeded in 1.07s:
+                mid = str(row.get("machine_id", "") or "").strip()
+                if not mid:
+                    continue
+                raw_state = str(row.get("raw_state", "") or "").strip().lower()
+                st = _normalize_state(str(row.get("state", "offline") or "offline"), raw_state)
+                if st != "offline":
+                    active += 1
+                if st == "alarm":
+                    alerts += 1
+                agg = dict(by_machine.get(mid, {}) or {})
+                util_obs = round(float(agg.get("utilization_pct_observed", 0.0) or 0.0), 1)
+                util_period = round(float(agg.get("utilization_pct_period", 0.0) or 0.0), 1)
+                cards.append(
+                    {
+                        "machine_id": mid,
+                        "group_name": str(row.get("group_name", "") or "").strip(),
+                        "state": st,
+                        "state_label": _state_label(st),
+                        "raw_state": raw_state,
+                        "program_name": str(row.get("program_name", "-") or "-"),
+ succeeded in 871ms:
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import json
+import shutil
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from machining_monitor_server.path_policy import (
+    connection_json_path,
+    data_dir,
+    machining_auto_runtime_db_path,
+    machining_auto_settings_json_path,
+    package_root,
+    runtime_db_path,
+)
+
+
+def _repo_root() -> Path:
+ succeeded in 798ms:
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import json
+import sqlite3
+import threading
+import time
+import uuid
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from machining_monitor_server.config_store import load_monitor_connections
+from machining_monitor_server.path_policy import runtime_db_path
+
+
+_DEFAULT_CUT_THRESHOLD = 1.0
+_DEFAULT_GAP_LIMIT_SECONDS = 600
+_RESUME_SAME_PROGRAM_GAP_SECONDS = 8 * 60 * 60
+_ALARM_TOKENS = {"ALARM", "ERROR"}
+
+thinking
+**Noticing encoding affecting file view**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'rg -n "def do_GET|def do_POST|/api/meta|permissions|/api/realtime|/api/admin|/api/users|/api/groups|/api/machines|/dashboard|/admin|/realtime|can_realtime" web/server.py' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/server.py | Select-Object -Skip 520 -First 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'rg -n "upsert_machine_profile|delete_machine_profile|list_machine_profiles|list_known_machines|list_machine_overview|get_period_aggregate_by_machine|machine_group|load_monitor_connections" diagnostics/runtime_history_store.py' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/static/styles.css | Select-Object -Skip 260 -First 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/static/app.js | Select-Object -Skip 580 -First 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path diagnostics/runtime_history_store.py | Select-Object -Skip 1140 -First 360' in D:\Development\machining_monitor_server succeeded in 677ms:
+124:    def can_realtime(self, role: str) -> bool:
+644:    def do_GET(self) -> None:  # noqa: N802
+658:                self.send_header("Location", "/dashboard")
+664:        if path in {"/", "/dashboard", "/admin", "/realtime"}:
+672:            if path in {"/admin", "/realtime"} and role != "admin":
+674:                self.send_header("Location", "/dashboard")
+678:            if path == "/admin":
+680:            elif path == "/realtime":
+694:                    "permissions": {
+695:                        "realtime": self.ctx.can_realtime(role),
+714:        if path == "/api/realtime":
+718:            if not self.ctx.can_realtime(s.role):
+724:        if path in {"/api/groups", "/api/admin/groups"}:
+730:        if path in {"/api/machines", "/api/admin/machines"}:
+736:        if path in {"/api/users", "/api/admin/users"}:
+744:    def do_POST(self) -> None:  # noqa: N802
+773:            self.send_header("Location", "/dashboard")
+798:        if path in {"/api/users/upsert", "/api/admin/users/upsert"}:
+815:        if path in {"/api/users/delete", "/api/admin/users/delete"}:
+827:        if path in {"/api/users/reset-password", "/api/admin/users/reset-password"}:
+ succeeded in 824ms:
+13:from machining_monitor_server.config_store import load_monitor_connections
+58:    for key in ("group_name", "group", "machine_group", "fleet_group"):
+202:        CREATE TABLE IF NOT EXISTS machine_group_map (
+208:        CREATE INDEX IF NOT EXISTS idx_machine_group_map_group_name
+209:        ON machine_group_map(group_name, machine_id);
+238:            self._ensure_machine_group_map_migrations()
+304:    def _ensure_machine_group_map_migrations(self) -> None:
+306:        Backward-compatible schema migration for machine_group_map.
+313:                CREATE TABLE IF NOT EXISTS machine_group_map (
+324:            rows = self._conn.execute("PRAGMA table_info(machine_group_map)").fetchall()
+342:                self._conn.execute("ALTER TABLE machine_group_map ADD COLUMN group_name TEXT")
+347:                self._conn.execute("ALTER TABLE machine_group_map ADD COLUMN updated_at_epoch INTEGER")
+353:                "UPDATE machine_group_map SET group_name = TRIM(COALESCE(group_name, ''))"
+359:                "UPDATE machine_group_map SET updated_at_epoch = ? WHERE updated_at_epoch IS NULL",
+367:                CREATE INDEX IF NOT EXISTS idx_machine_group_map_group_name
+368:                ON machine_group_map(group_name, machine_id)
+374:    def _upsert_machine_group_row(
+388:            UPDATE machine_group_map
+398:                INSERT INTO machine_group_map(machine_id, group_name, updated_at_epoch)
+1246:    def get_period_aggregate_by_machine(
+ succeeded in 931ms:
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #17396f;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.group-title {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.group-title span {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+ succeeded in 973ms:
+
+    @property
+    def ctx(self) -> MonitorWebContext:
+        return self.server.ctx  # type: ignore[attr-defined]
+
+    def log_message(self, fmt: str, *args: object) -> None:
+        print(f"[monitor-web] {fmt % args}")
+
+    def _session(self) -> _Session | None:
+        cookie = SimpleCookie()
+        raw = self.headers.get("Cookie", "")
+        if raw:
+            try:
+                cookie.load(raw)
+            except Exception:
+                pass
+        token = cookie.get("mms_session")
+        return None if token is None else self.ctx.get_session(str(token.value or ""))
+
+    def _send(self, status: int, body: bytes, ctype: str) -> None:
+ succeeded in 963ms:
+        method: 'POST',
+        body: JSON.stringify({ username, new_password: pw }),
+      });
+      $('f-password').value = '';
+      await loadUsers();
+    });
+
+    on('btn-toggle-active', 'click', async () => {
+      if (!state.permissions.admin) return;
+      const username = String($('f-username').value || '').trim();
+      if (!username) return;
+      await api('/api/users/set-active', {
+        method: 'POST',
+        body: JSON.stringify({ username, is_active: !!$('f-active').checked }),
+      });
+      await loadUsers();
+    });
+
+    on('btn-delete-user', 'click', async () => {
+      if (!state.permissions.admin) return;
+ succeeded in 993ms:
+        params: list[Any] = [_machine_key(machine_id)]
+        if start_epoch is not None:
+            where.append("epoch >= ?")
+            params.append(_safe_int(start_epoch, 0))
+        if end_epoch is not None:
+            where.append("epoch <= ?")
+            params.append(_safe_int(end_epoch, 0))
+        sql = f"""
+            SELECT id, machine_id, program_name, epoch, event_type, details_json
+              FROM event_log
+             WHERE {' AND '.join(where)}
+             ORDER BY epoch DESC, id DESC
+             LIMIT ?
+        """
+        params.append(lim)
+        with self._lock:
+            rows = self._fetchall(sql, tuple(params))
+
+        out: list[dict[str, Any]] = []
+        for row in rows:
+
+thinking
+**Inspecting machine fetch logic**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path diagnostics/runtime_history_store.py | Select-Object -Skip 1500 -First 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path diagnostics/runtime_history_store.py | Select-Object -Skip 1720 -First 340' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path connection_settings_dialog.py | Select-Object -Skip 240 -First 220' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/static/styles.css | Select-Object -Skip 520 -First 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/server.py | Select-Object -Skip 760 -First 220' in D:\Development\machining_monitor_server succeeded in 398ms:
+            include_legacy=False,
+        )
+        year_series = self.get_bucket_series(
+            machine_id=machine_id,
+            start_epoch=max(0, now_ep - (3650 * 86400)),
+            end_epoch=now_ep,
+            bucket="year",
+            include_legacy=False,
+        )
+        programs = self.list_program_totals(machine_id=machine_id, limit=50)
+        events = self.list_events(machine_id=machine_id, start_epoch=start_ep, end_epoch=end_ep, limit=300)
+
+        return {
+            "machine_id": _machine_key(machine_id),
+            "now_epoch": int(now_ep),
+            "range_days": int(days),
+            "db_path": str(self._db_path),
+            "period": period,
+            "day": day,
+            "month": month,
+ succeeded in 449ms:
+            {
+                "connection_type": str(self.cb_conn_type.currentText() or "").strip(),
+                "ip": str(self.edt_ip.text() or "").strip(),
+                "ftp_port": int(port),
+                "ftp_user": str(self.edt_user.text() or ""),
+                "ftp_password": str(self.edt_password.text() or ""),
+                "ftp_passive": bool(self.chk_passive.isChecked()),
+                "ftp_root_dir": str(self.edt_root_dir.text() or ""),
+            }
+        )
+
+    def _load_form_from_machine(self, machine: str) -> None:
+        name = str(machine or "").strip()
+        cfg = self._normalize_cfg(dict(self._conn_map.get(name, {}) or {}))
+        self._loading = True
+        try:
+            idx = self.cb_conn_type.findText(str(cfg.get("connection_type", "HEIDENHAIN_LSV2")))
+            if idx < 0:
+                idx = 0
+            self.cb_conn_type.setCurrentIndex(idx)
+ succeeded in 546ms:
+            else:
+                row = self._fetchone(
+                    """
+                    SELECT MAX(epoch) AS max_epoch
+                      FROM runtime_samples
+                    """
+                )
+        max_epoch = _safe_int(row["max_epoch"] if row is not None else 0, 0)
+        return int(max_epoch) if max_epoch > 0 else None
+
+    def list_machine_overview(
+        self,
+        *,
+        now_epoch: int | None = None,
+        active_within_sec: int = 90,
+    ) -> list[dict[str, Any]]:
+        """
+        Fleet-level lightweight status snapshot.
+        - offline: no recent samples
+        - running/cutting/manual/alarm/idle: based on latest sample state
+ succeeded in 606ms:
+.group-selected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--muted);
+  background: rgba(12, 25, 48, 0.6);
+}
+
+.group-selected-badge strong { color: #fff; }
+
+.group-bulk-actions { margin-bottom: 8px; }
+
+.group-drag-help {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+}
+ succeeded in 680ms:
+                return
+
+            sid = self.ctx.create_session(
+                str(auth.get("username", "")), str(auth.get("role", "viewer"))
+            )
+            cookie = SimpleCookie()
+            cookie["mms_session"] = sid
+            cookie["mms_session"]["path"] = "/"
+            cookie["mms_session"]["httponly"] = True
+            cookie["mms_session"]["samesite"] = "Lax"
+            self.send_response(302)
+            self.send_header("Set-Cookie", cookie.output(header="").strip())
+            self.send_header("Location", "/dashboard")
+            self.end_headers()
+            return
+
+        if path == "/logout":
+            cookie = SimpleCookie()
+            raw = self.headers.get("Cookie", "")
+            if raw:
+
+thinking
+**Assessing encoding and scope boundaries**
+codex
+I’ve identified that web currently exposes full admin UI/APIs for admin accounts; next I’m checking the external orchestrator task notes to resolve the exact AGENT‑T3 acceptance wording before patching data/API behavior.
+
+thinking
+**Inspecting orchestrator contents**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-ChildItem -Recurse -File' in D:\Development\orchestratorexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'rg -n "AGENT-T3|T3|second-pass|PM feedback|Scope|connect-all|Scope tab|read-only|web monitor|admin" *.md **/*.md' in D:\Development\orchestrator exited 1 in 280ms:
+rg: *.md: 파일 이름, 디렉터리 이름 또는 볼륨 레이블 구문이 잘못되었습니다. (os error 123)
+rg: **/*.md: 파일 이름, 디렉터리 이름 또는 볼륨 레이블 구문이 잘못되었습니다. (os error 123)
+ succeeded in 326ms:
+
+
+    디렉터리: D:\Development\orchestrator
+
+
+Mode                 LastWriteTime         Length Name                                                                 
+----                 -------------         ------ ----                                                                 
+-a----        2026-02-26   오후 9:56          64391 dashboard.py                                                         
+-a----        2026-02-26   오전 9:19            243 dev_team.code-workspace                                              
+-a----        2026-02-26  오전 10:53           2031 inbox.md                                                             
+-a----        2026-02-26  오전 10:54           2286 integration.md                                                       
+-a----        2026-02-26   오후 1:45           7837 master_tasks.md                                                      
+-a----        2026-02-27   오후 3:10           2240 ORCHESTRATOR_RUNNER.md                                               
+-a----        2026-02-26   오후 2:28             29 pm_settings.json                                                     
+-a----        2026-02-27   오후 4:12           4359 results.md                                                           
+-a----        2026-02-27   오후 3:16            473 run_dashboard.ps1                                                    
+-a----        2026-02-27   오후 3:17            174 run_server_control_gui.cmd                                           
+-a----        2026-02-27   오후 3:17            434 run_server_control_gui.ps1                                           
+-a----        2026-02-26   오후 8:29           1693 run_workers.ps1                                                      
+-a----        2026-02-27   오후 3:19          21619 server_control_gui.py                                                
+
+thinking
+**Opening task prompt file**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path runner/prompts/AGENT-T3.md -TotalCount 260' in D:\Development\orchestratorexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path runner/tasks.AGENT.json -TotalCount 260' in D:\Development\orchestratorexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path results.md -TotalCount 260' in D:\Development\orchestrator succeeded in 328ms:
+You are executing task {{TASK_ID}}.
+
+Owner: {{OWNER}}
+Repo: {{REPO}}
+Scope paths (do not edit outside):
+{{SCOPE_PATHS}}
+
+Goal:
+{{GOAL}}
+
+Done when:
+{{DONE_WHEN}}
+
+Execution constraints:
+- Align app admin capabilities with web parity: user/permission, group, machine registration.
+- Keep web deployment as monitor-first/read-only for regular users.
+- Ensure admin data and APIs remain consistent across app/web.
+- Keep edits UTF-8.
+- Update `D:\\Development\\orchestrator\\results.md` section `[{{TASK_ID}}]`.
+
+ succeeded in 383ms:
+# Worker Results
+
+## Rules
+- Report per task id (`ORCH-xxxx-Tn`).
+- Keep summary short: key changes, tests, risk, rollback point.
+
+---
+
+## [ORCH-0002-T1]
+- Owner: Core/Connection
+- Repo: machining_auto
+- Changed files:
+- Key changes (5 lines max):
+- Tests run / results:
+- Risk / notes:
+- Rollback point (commit/PR):
+
+## [ORCH-0002-T2]
+- Owner: UI/Client
+- Repo: machining_monitor_server
+ succeeded in 368ms:
+{
+  "orch_id": "AGENT",
+  "workspace": "d:\\Development",
+  "defaults": {
+    "model": "gpt-5.3-codex",
+    "reasoning_effort": "xhigh",
+    "global_prompt": "Second-pass refactor per PM feedback: app must behave like web monitor/admin, include server ON/OFF, restore realtime graph, add Scope tab naming, and ask connect-all on entry. Web remains read-only monitor.",
+    "sandbox": "danger-full-access",
+    "approval": "never",
+    "search": false,
+    "read_only_guard": false,
+    "history_readonly_guard": false,
+    "claude_cmd": "claude",
+    "claude_continue": false,
+    "claude_args": [
+      "--print"
+    ],
+    "claude_stdin": true,
+    "claude_auto_approve": true,
+    "claude_permission_mode": "bypassPermissions",
+
+thinking
+**Identifying encoding and scope issues**
+codex
+I found the runner config for `AGENT-T3`; I’ll quickly inspect the existing `AGENT-T3` run log to extract what failed in the first pass so this patch targets the exact gaps.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path runs/AGENT/AGENT-T3.log -TotalCount 320' in D:\Development\orchestratorexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path runs/AGENT/AGENT-T3.log | Select-Object -Skip 320 -First 360' in D:\Development\orchestrator succeeded in 275ms:
+2026-02-27T09:01:09.450380Z  WARN codex_core::shell_snapshot: Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell
+OpenAI Codex v0.105.0 (research preview)
+--------
+workdir: D:\Development\machining_monitor_server
+model: gpt-5.3-codex
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: xhigh
+reasoning summaries: auto
+session id: 019c9e54-9593-7823-b756-68a20abe7448
+--------
+user
+Second-pass refactor per PM feedback: app must behave like web monitor/admin, include server ON/OFF, restore realtime graph, add Scope tab naming, and ask connect-all on entry. Web remains read-only monitor.
+
+---
+
+You are executing task AGENT-T3.
+
+Owner: Codex-C
+ succeeded in 313ms:
+                        "state_label": _state_label(st),
+                        "raw_state": raw_state,
+                        "program_name": str(row.get("program_name", "-") or "-"),
+ succeeded in 871ms:
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import json
+import shutil
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from machining_monitor_server.path_policy import (
+    connection_json_path,
+    data_dir,
+    machining_auto_runtime_db_path,
+    machining_auto_settings_json_path,
+    package_root,
+    runtime_db_path,
+
+thinking
+**Reviewing truncated log tail**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path runs/AGENT/AGENT-T3.log -Tail 220' in D:\Development\orchestrator succeeded in 444ms:
+ succeeded in 546ms:
+            else:
+                row = self._fetchone(
+                    """
+                    SELECT MAX(epoch) AS max_epoch
+                      FROM runtime_samples
+                    """
+                )
+        max_epoch = _safe_int(row["max_epoch"] if row is not None else 0, 0)
+        return int(max_epoch) if max_epoch > 0 else None
+
+    def list_machine_overview(
+        self,
+        *,
+        now_epoch: int | None = None,
+        active_within_sec: int = 90,
+    ) -> list[dict[str, Any]]:
+        """
+        Fleet-level lightweight status snapshot.
+        - offline: no recent samples
+
+thinking
+**Checking existing git changes**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'git status --short' in D:\Development\machining_monitor_server succeeded in 256ms:
+ M __pycache__/app.cpython-312.pyc
+ M app.py
+ M data/machine_connections.json
+ M data/runtime.db
+ M data/runtime.db-shm
+ M data/runtime.db-wal
+ M diagnostics/__pycache__/runtime_history_store.cpython-312.pyc
+ M diagnostics/__pycache__/runtime_info_dialog.cpython-312.pyc
+ M diagnostics/runtime_history_store.py
+ M diagnostics/runtime_info_dialog.py
+ M runs/fleet_collectors.json
+ M runs/fleet_logs/collector_Dino#1.err.log
+ M runs/fleet_logs/collector_Dino#1.out.log
+ M runs/fleet_logs/collector_Dino#2.err.log
+ M runs/fleet_logs/collector_Dino#2.out.log
+ M runs/fleet_logs/collector_Dino#3.err.log
+ M runs/fleet_logs/collector_Dino#3.out.log
+ M runs/fleet_logs/collector_Dino#4.err.log
+ M runs/fleet_logs/collector_Dino#4.out.log
+ M runs/fleet_logs/collector_Dino#5.err.log
+
+thinking
+**Assessing config sync and encoding risks**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'rg -n "load_monitor_connections|save_monitor_connections|machine_conn_map|machine_list|group_name|preset_controller_type|connection_type|connect_all|auto_connect" -g "*.py"' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'rg -n "MACHINING_MONITOR_ALLOW_REALTIME|MACHINING_MONITOR_ROLE|can_realtime|read-only|monitor-first|admin" -g "*.py" web runtime app.py diagnostics' in D:\Development\machining_monitor_server succeeded in 278ms:
+server_main.py:19:from machining_monitor_server.config_store import load_machine_conn_map
+server_main.py:42:        self._conn_map = load_machine_conn_map()
+server_main.py:66:        conn_type = str(cfg.get("connection_type", "") or "").strip() or "HEIDENHAIN_LSV2"
+server_main.py:68:            raise RuntimeError(f"unsupported connection_type in headless mode: {conn_type}")
+server_main.py:76:            connection_type=conn_type,
+server_main.py:86:                controller_type=str(cfg.get("preset_controller_type", "") or "").strip(),
+server_main.py:87:                connection_type=str(cfg.get("connection_type", "") or "").strip(),
+server_main.py:283:                controller_type=str(cfg.get("preset_controller_type", "") or "").strip(),
+server_main.py:284:                connection_type=str(cfg.get("connection_type", "") or "").strip(),
+config_store.py:40:        "machine_list": [],
+config_store.py:41:        "machine_conn_map": {},
+config_store.py:62:    machine_conn_map = dict(raw.get("machine_conn_map", {}) or {})
+config_store.py:64:    machine_list = list(raw.get("machine_list", []) or [])
+config_store.py:67:    names = list(machine_conn_map.keys())
+config_store.py:69:        cfg = dict(machine_conn_map.get(name, {}) or {})
+config_store.py:73:        cfg.setdefault("connection_type", str(cfg.get("connection_type", "") or "").strip())
+config_store.py:79:        "machine_list": [str(x) for x in machine_list if str(x).strip()],
+config_store.py:80:        "machine_conn_map": out_map,
+config_store.py:113:def load_monitor_connections() -> dict[str, Any]:
+config_store.py:119:        return {"schema_version": 1, "machine_list": [], "machine_conn_map": {}}
+ succeeded in 316ms:
+app.py:41:    if "MACHINING_MONITOR_ALLOW_REALTIME" in os.environ:
+app.py:42:        return _env_flag("MACHINING_MONITOR_ALLOW_REALTIME", default=False)
+diagnostics\runtime_info_dialog.py:2106:        admin_wrap = QWidget(lower_split)
+diagnostics\runtime_info_dialog.py:2107:        admin_lay = QVBoxLayout(admin_wrap)
+diagnostics\runtime_info_dialog.py:2108:        admin_lay.setContentsMargins(0, 0, 0, 0)
+diagnostics\runtime_info_dialog.py:2109:        admin_lay.setSpacing(6)
+diagnostics\runtime_info_dialog.py:2111:        lbl_admin = QLabel("사용자 신호 관리", admin_wrap)
+diagnostics\runtime_info_dialog.py:2112:        lbl_admin.setObjectName("RuntimeHistorySectionTitle")
+diagnostics\runtime_info_dialog.py:2113:        admin_lay.addWidget(lbl_admin, 0)
+diagnostics\runtime_info_dialog.py:2115:        self.cb_hist_admin_machine = QComboBox(admin_wrap)
+diagnostics\runtime_info_dialog.py:2116:        self.cb_hist_admin_machine.setObjectName("TopBarMachineCombo")
+diagnostics\runtime_info_dialog.py:2117:        self.cb_hist_admin_machine.setMinimumWidth(150)
+diagnostics\runtime_info_dialog.py:2118:        self.cb_hist_admin_machine.setMinimumHeight(30)
+diagnostics\runtime_info_dialog.py:2119:        self.cb_hist_admin_machine.currentIndexChanged.connect(lambda _idx: self._refresh_history_signal_admin())
+diagnostics\runtime_info_dialog.py:2121:        self.edt_hist_admin_signal = QLineEdit(admin_wrap)
+diagnostics\runtime_info_dialog.py:2122:        self.edt_hist_admin_signal.setObjectName("TopBarMachineCombo")
+diagnostics\runtime_info_dialog.py:2123:        self.edt_hist_admin_signal.setPlaceholderText("signal_name (e.g. spindle_rpm_actual)")
+diagnostics\runtime_info_dialog.py:2124:        self.edt_hist_admin_signal.setMinimumWidth(180)
+diagnostics\runtime_info_dialog.py:2125:        self.edt_hist_admin_signal.setMinimumHeight(30)
+diagnostics\runtime_info_dialog.py:2127:        self.edt_hist_admin_expr = QLineEdit(admin_wrap)
+
+thinking
+**Inspecting connection initialization logic**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path app.py -TotalCount 240' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path runtime/controller.py | Select-Object -Skip 540 -First 240' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path diagnostics/runtime_info_dialog.py | Select-Object -Skip 2360 -First 260' in D:\Development\machining_monitor_server succeeded in 300ms:
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+if __package__ in {None, ""}:
+    _ROOT = Path(__file__).resolve().parents[1]
+    if str(_ROOT) not in sys.path:
+        sys.path.insert(0, str(_ROOT))
+
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
+
+from machining_monitor_server.config_store import (
+    import_connections_from_source,
+    machining_auto_global_settings_path,
+    migrate_runtime_db_from_source,
+ succeeded in 380ms:
+    def _on_fleet_action_finished(self, action: str, ok: bool, summary: str, open_home: bool) -> None:
+        self._fleet_action_inflight = False
+        self._open_home_after_fleet_action = False
+        self._sync_fleet_controls()
+
+        op = str(action or "").strip().lower() or "action"
+        if bool(ok):
+            self._set_status(f"서버 {op} 완료", state="checking")
+            if bool(open_home) and op in {"start", "restart"}:
+                threading.Thread(target=self._open_home_when_ready, daemon=True).start()
+        else:
+            self._set_status(f"서버 {op} 실패", state="error")
+
+        try:
+            self._lbl_state.setToolTip(str(summary or "-"))
+        except Exception:
+            pass
+
+    def _base_url_for_browser(self) -> str:
+        return _normalize_base_url_for_browser(_load_fleet_base_url())
+ succeeded in 421ms:
+            return int(st.timestamp()), int(now_ep), "?대쾲 ??
+        if mode == "custom":
+            try:
+                ds = self.de_hist_start.date()
+                de = self.de_hist_end.date()
+                st = datetime(ds.year(), ds.month(), ds.day(), 0, 0, 0)
+                ed = datetime(de.year(), de.month(), de.day(), 23, 59, 59)
+                s_ep = int(st.timestamp())
+                e_ep = int(ed.timestamp())
+                if e_ep < s_ep:
+                    s_ep, e_ep = e_ep, s_ep
+                    ds, de = de, ds
+                return s_ep, e_ep, f"{ds.toString('yyyy-MM-dd')} ~ {de.toString('yyyy-MM-dd')}"
+            except Exception:
+                pass
+
+        # default: last 7 days
+        return int(now_ep - (7 * 86400)), int(now_ep), "理쒓렐 7??
+
+    def _register_machine_profile_interactive(self) -> None:
+
+thinking
+**Analyzing admin parity and data sync**
+codex
+I confirmed app-side startup/connect-all is already wired in out-of-scope files; I’m now focusing T3 on core data/API parity by checking how web auth/admin state is persisted versus app config/runtime stores.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/auth_store.py -TotalCount 260' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/auth_manager.py -TotalCount 320' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path path_policy.py -TotalCount 280' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path web/auth_manager.py | Select-Object -Skip 320 -First 220' in D:\Development\machining_monitor_server succeeded in 333ms:
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import argparse
+import hashlib
+import hmac
+import json
+import os
+import sqlite3
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+
+def _norm_username(value: object) -> str:
+    return str(value or "").strip()
+
+
+def _norm_role(value: object) -> str:
+ succeeded in 332ms:
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+"""
+Backward-compatible import shim.
+Existing modules may still import WebAuthStore from this path.
+"""
+
+from machining_monitor_server.web.auth_manager import AuthManager
+
+
+class WebAuthStore(AuthManager):
+    pass
+
+ succeeded in 343ms:
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+
+def _clean_env(name: str) -> str:
+    return str(os.getenv(name, "") or "").strip()
+
+
+def _path_from_env(name: str) -> Path | None:
+    txt = _clean_env(name)
+    if not txt:
+        return None
+    try:
+        return Path(txt).expanduser().resolve()
+    except Exception:
+        return None
+
+ succeeded in 408ms:
+    p.add_argument("--create-admin", action="store_true", help="create/update admin account")
+    p.add_argument("--username", type=str, default="", help="username")
+    p.add_argument("--password", type=str, default="", help="password")
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(list(argv if argv is not None else sys.argv[1:]))
+    mgr = AuthManager(Path(str(args.runtime_db)).expanduser().resolve())
+    if bool(args.create_admin):
+        user = _norm_username(args.username or "admin")
+        pw = str(args.password or "")
+        if not pw:
+            raise SystemExit("password is required")
+        mgr.upsert_user(username=user, role="admin", password=pw, is_active=True)
+        print(f"[auth] admin upserted: {user}")
+        return 0
+    print(json.dumps({"ok": True, "has_any_user": mgr.has_any_user(), "users": mgr.list_users()}, ensure_ascii=False, indent=2))
+    return 0
+
+
+thinking
+**Evaluating web read-only mode options**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path runs/AGENT/AGENT-T5.log -Tail 320' in D:\Development\orchestrator succeeded in 236ms:
+  549:             if bool(open_home) and op in {"start", "restart"}:
+  550:                 threading.Thread(target=self._open_home_when_ready, daemon=True).start()
+  551:         else:
+  552:             self._set_status(f"?쒕쾭 {op} ?ㅽ뙣", state="error")
+  553: 
+  554:         try:
+  555:             self._lbl_state.setToolTip(str(summary or "-"))
+  556:         except Exception:
+  557:             pass
+  558: 
+  559:     def _base_url_for_browser(self) -> str:
+ succeeded in 367ms:
+ 1260:         self.left_menu_rail.setObjectName("RuntimeLeftMenuRail")
+ 1261:         self.left_menu_rail.setFixedWidth(132)
+ 1262:         left_menu_lay = QVBoxLayout(self.left_menu_rail)
+ 1263:         left_menu_lay.setContentsMargins(6, 8, 6, 8)
+ 1264:         left_menu_lay.setSpacing(6)
+ 1265: 
+ 1266:         lbl_left = QLabel("MENU", self.left_menu_rail)
+ 1267:         lbl_left.setObjectName("RuntimeLeftMenuTitle")
+
+thinking
+**Clarifying web read-only mode assumptions**
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path runs/AGENT/AGENT-T1.log -Tail 220' in D:\Development\orchestratorexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Path runs/AGENT/AGENT-T2.log -Tail 240' in D:\Development\orchestrator succeeded in 333ms:
+from typing import Any
+from urllib.error import URLError
+from urllib.parse import urlsplit, urlunsplit
+from urllib.request import Request, urlopen
+
+from PySide6.QtCore import QObject, QTimer, Qt, Signal
+from PySide6.QtWidgets import QComboBox, QDialog, QFrame, QHBoxLayout, QToolButton, QPushButton, QFileDialog, QMessageBox
+
+from machining_monitor_server.integration.connection_backend import ConnectionManager, MachineConnInfo
+from machining_monitor_server.config_store import (
+ succeeded in 305ms:
+        try:
+            self._poll_timer.stop()
+        except Exception:
+            pass
+        try:
+            shutdown = getattr(self._conn_mgr, "shutdown", None)
+            if callable(shutdown):
+                shutdown(3500)
+            else:
+ succeeded in 379ms:
+I?셶e located the key hooks in `runtime/controller.py` and `runtime_info_dialog.py`; next I?셫 checking those sections in detail to confirm exactly what still needs adjustment versus what?셲 already implemented.
+exec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$path='"'diagnostics\\runtime_info_dialog.py'; "'$ranges=@(@(1240,1745),@(2200,2335),@(4480,4575),@(4880,4970),@(7935,8025)); $lines=Get-Content $path; foreach($r in $ranges){ $start=$r[0]; $end=$r[1]; Write-Output "--- $path:$start-$end ---"; for($ln=$start; $ln -le $end; $ln++){ if($ln -le $lines.Length){ '"'{0,5}: {1}' -f "'$ln,$lines[$ln-1] | Write-Output } } }' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$path='"'runtime\\controller.py'; "'$ranges=@(@(560,660),@(360,440),@(480,620),@(720,780),@(840,910)); $i=0; $lines=Get-Content $path; foreach($r in $ranges){ $start=$r[0]; $end=$r[1]; Write-Output "--- $path:$start-$end ---"; for($ln=$start; $ln -le $end; $ln++){ if($ln -le $lines.Length){ '"'{0,5}: {1}' -f "'$ln,$lines[$ln-1] | Write-Output } } }' in D:\Development\machining_monitor_serverexec
+"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$files=@('"'web\\static\\index.html','web\\static\\app.js','web\\static\\styles.css'); foreach("'$path in $files){ Write-Output "--- $path ---"; $i=0; Get-Content $path | ForEach-Object { $i++; if($i -le 220){ '"'{0,5}: {1}' -f "'$i,$_ | Write-Output } }; }' in D:\Development\machining_monitor_server exited 1 in 719ms:
+At line:2 char:216
++ ...  $ranges){ $start=$r[0]; $end=$r[1]; Write-Output "--- $path:$start-$ ...
++                                                            ~~~~~~
+Variable reference is not valid. ':' was not followed by a valid variable name character. Consider using ${} to delimit
+ the name.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : InvalidVariableReferenceWithDrive
+ 
+ exited 1 in 737ms:
+At line:2 char:199
++ ...  $ranges){ $start=$r[0]; $end=$r[1]; Write-Output "--- $path:$start-$ ...
++                                                            ~~~~~~
+Variable reference is not valid. ':' was not followed by a valid variable name character. Consider using ${} to delimit
+ the name.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
