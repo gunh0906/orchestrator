@@ -1,0 +1,36 @@
+﻿{
+  "orch_id": "ORCH-0005-T5D",
+  "workspace": "d:\\Development",
+  "defaults": {
+    "model": "gpt-5.3-codex",
+    "reasoning_effort": "xhigh",
+    "global_prompt": "",
+    "sandbox": "workspace-write",
+    "approval": "never",
+    "search": false,
+    "codex_dangerously_bypass": true,
+    "read_only_guard": true,
+    "history_readonly_guard": false
+  },
+  "workers": [
+    {
+      "task_id": "ORCH-0005-T5",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-UI-Fallback",
+      "role": "UI/Design",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/styles/runtime_monitor.qss",
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py"
+      ],
+      "goal": "Refine utilization page visual hierarchy and spacing for operator-friendly scanability.",
+      "done_when": [
+        "Top KPIs, period controls, and fleet list are visually separated and readable.",
+        "No overlap/crowding at common resolutions (1920x1080 and 2560x1440).",
+        "Design remains consistent with monitor app style tokens."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0005-T5.md"
+    }
+  ]
+}

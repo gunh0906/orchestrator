@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../machining_auto"
+		},
+		{
+			"path": "../machining_core"
+		},
+		{
+			"path": "../machining_monitor_server"
+		},
+		{
+			"path": "../ML"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {}
+}

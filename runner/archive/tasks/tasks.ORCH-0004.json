@@ -1,0 +1,140 @@
+{
+  "orch_id": "ORCH-0004",
+  "workspace": "d:\\Development",
+  "defaults": {
+    "model": "gpt-5.3-codex",
+    "reasoning_effort": "xhigh",
+    "global_prompt": "",
+    "sandbox": "workspace-write",
+    "approval": "never",
+    "search": false,
+    "codex_dangerously_bypass": true,
+    "read_only_guard": true,
+    "history_readonly_guard": false,
+    "claude_cmd": "claude-code",
+    "claude_continue": false,
+    "claude_args": [
+      "--print",
+      "{prompt}"
+    ],
+    "claude_stdin": false
+  },
+  "workers": [
+    {
+      "task_id": "ORCH-0004-T1",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-A",
+      "role": "Core/Connection",
+      "repo": "machining_auto",
+      "scope_paths": [
+        "machining_auto/machine_connection/connection_manager.py",
+        "machining_auto/machine_connection/diagnostics/heidenhain_runtime_info.py"
+      ],
+      "goal": "Fix INSPECT login noise and TNC TABLE directory change errors during machine switching.",
+      "done_when": [
+        "No repeated `error logging in as INSPECT` spam on unsupported controls.",
+        "No repeated TABLE/table/Table change-directory attempts for a single request.",
+        "Reconnect switch path remains stable."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0004-T1.md"
+    },
+    {
+      "task_id": "ORCH-0004-T2",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-B",
+      "role": "Coolant/530",
+      "repo": "machining_auto",
+      "scope_paths": [
+        "machining_auto/app_shell.py",
+        "machining_auto/machine_connection/rotate_monitor_panel.py",
+        "machining_auto/machine_connection/diagnostics/heidenhain_runtime_info.py"
+      ],
+      "goal": "Align iTNC530 coolant display with M-code mapping (M17 out-air, M8 out-oil, M18 in-oil) and keep 640 compatibility.",
+      "done_when": [
+        "530 coolant state shows requested labels.",
+        "640 coolant state remains unchanged for existing output bits.",
+        "No duplicate/contradicting coolant labels."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0004-T2.md"
+    },
+    {
+      "task_id": "ORCH-0004-T3",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-C",
+      "role": "Runtime/Fleet",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
+        "machining_monitor_server/diagnostics/runtime_history_store.py",
+        "machining_monitor_server/data/runtime.db"
+      ],
+      "goal": "Make utilization overview show all registered machines at a glance with registration flow wired.",
+      "done_when": [
+        "Fleet summary panel lists all machines with status.",
+        "Machine registration/update is possible from existing connection config flow.",
+        "DB reads/writes are integrated without schema break."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0004-T3.md"
+    },
+    {
+      "task_id": "ORCH-0004-T4",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-D",
+      "role": "History/Range",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
+        "machining_monitor_server/diagnostics/runtime_history_store.py"
+      ],
+      "goal": "Remove calendar UI and replace with period selector (preset ranges + custom start/end), fully DB-backed.",
+      "done_when": [
+        "Calendar widget removed from utilization tab.",
+        "Period selector works (day/week/month/custom).",
+        "Queries use selected range and refresh charts/tables correctly."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0004-T4.md"
+    },
+    {
+      "task_id": "ORCH-0004-T5",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-E",
+      "role": "Admin/AddressDB",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/diagnostics/runtime_history_store.py",
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
+        "machining_monitor_server/diagnostics/telemetry_mapping.py"
+      ],
+      "goal": "Provide per-machine admin-managed address mapping storage/edit UI and persist to DB.",
+      "done_when": [
+        "Admin can add/edit/remove addresses per machine.",
+        "Address config persists and reloads from DB.",
+        "Runtime/telemetry reads use per-machine mapping source."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0004-T5.md"
+    },
+    {
+      "task_id": "ORCH-0004-T6",
+      "enabled": true,
+      "engine": "claude-cli",
+      "owner": "Claude",
+      "role": "UI/Design",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py"
+      ],
+      "goal": "Redesign utilization UI to be user-friendly and compact; final design ownership by Claude.",
+      "done_when": [
+        "Utilization page layout is cleaner and easier to scan.",
+        "Spacing/typography/button grouping are consistent.",
+        "No widget overlap on common desktop resolutions."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0004-T6.md"
+    }
+  ]
+}

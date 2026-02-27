@@ -1,0 +1,166 @@
+{
+  "orch_id": "AGENT",
+  "workspace": "d:\\Development",
+  "defaults": {
+    "model": "gpt-5.3-codex",
+    "reasoning_effort": "xhigh",
+    "global_prompt": "",
+    "sandbox": "workspace-write",
+    "approval": "never",
+    "search": false,
+    "read_only_guard": true,
+    "history_readonly_guard": true,
+    "claude_cmd": "claude",
+    "claude_continue": true,
+    "claude_args": [
+      "--print",
+      "{prompt}"
+    ],
+    "claude_stdin": false,
+    "single_run_dir": true,
+    "clean_run_dir": true,
+    "prune_legacy_runs": true,
+    "pm_last_request": "",
+    "pm_last_selected": [],
+    "claude_auto_approve": true,
+    "claude_permission_mode": "bypassPermissions",
+    "pm_last_selected_count": 2
+  },
+  "workers": [
+    {
+      "task_id": "AGENT-T1",
+      "enabled": false,
+      "engine": "codex",
+      "owner": "Codex-A",
+      "role": "Integration",
+      "work_method": "integration",
+      "repo": "orchestrator",
+      "scope_paths": [
+        "orchestrator/web/**",
+        "orchestrator/runner/dispatch.py",
+        "orchestrator/runner/tasks.AGENT.json",
+        "orchestrator/status_report.md",
+        "orchestrator/inbox.md"
+      ],
+      "goal": "Diagnose worker visibility and make dashboard reliably show active workers/logs/progress.",
+      "done_when": [
+        "Dashboard always shows active worker rows while jobs are running.",
+        "Log View opens in dedicated modal/window and does not overlay the whole main page.",
+        "Worker state, activity, and latest update timestamp refresh consistently."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/AGENT-T1.md"
+    },
+    {
+      "task_id": "AGENT-T2",
+      "enabled": false,
+      "engine": "codex",
+      "owner": "Codex-B",
+      "role": "Core/Connection",
+      "work_method": "connection",
+      "repo": "machining_auto",
+      "scope_paths": [
+        "machining_auto/machine_connection/connection_manager.py",
+        "machining_auto/machine_connection/connectors/heidenhain_lsv2.py",
+        "machining_auto/machine_connection/heidenhain_tool_table.py",
+        "machining_auto/machine_connection/parse/preset_service.py",
+        "machining_auto/machine_connection/parse/tool_table_service.py"
+      ],
+      "goal": "Fix machine monitor connection reliability and tool/preset loading reliability on problematic machines.",
+      "done_when": [
+        "INSPECT login/cwd table-path noise is suppressed or fallback-handled.",
+        "Switching across problem machines keeps connection stable without thread leak warnings.",
+        "Tool table/preset table loads recover consistently after machine switching."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/AGENT-T2.md"
+    },
+    {
+      "task_id": "AGENT-T3",
+      "enabled": false,
+      "engine": "codex",
+      "owner": "Codex-C",
+      "role": "Backend/Runtime",
+      "work_method": "runtime",
+      "repo": "machining_auto",
+      "scope_paths": [
+        "machining_auto/machine_connection/diagnostics/heidenhain_runtime_info.py",
+        "machining_auto/machine_connection/connection_manager.py",
+        "machining_monitor_server/diagnostics/heidenhain_runtime_info.py",
+        "machining_monitor_server/runtime/controller.py"
+      ],
+      "goal": "Enforce iTNC530 coolant mapping M17 out-air, M8 out-oil, M18 in-oil consistently across monitor paths.",
+      "done_when": [
+        "Both machining_auto and monitor_server resolve iTNC530 coolant labels identically.",
+        "Live summary and detail view show the same mapping outputs.",
+        "No mapping regression for TNC640 path."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/AGENT-T3.md"
+    },
+    {
+      "task_id": "AGENT-T4",
+      "enabled": false,
+      "engine": "claude-cli",
+      "owner": "Claude",
+      "role": "UI/Design",
+      "work_method": "ui",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
+        "machining_monitor_server/styles/runtime_monitor.qss",
+        "machining_monitor_server/app.py"
+      ],
+      "goal": "Apply dark concept layout on main page and move secondary information to detail page.",
+      "done_when": [
+        "Main page uses dark concept palette and hierarchy like provided reference.",
+        "Secondary/verbose info moved to detail page to reduce clutter.",
+        "No overlap on 2K/4K and controls remain usable."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/AGENT-T4.md",
+      "allow_token_retry": true
+    },
+    {
+      "task_id": "AGENT-T5",
+      "enabled": false,
+      "engine": "codex",
+      "owner": "Codex-D",
+      "role": "Auth/Login",
+      "work_method": "auth",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/app.py",
+        "machining_monitor_server/runtime/**",
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
+        "machining_monitor_server/styles/runtime_monitor.qss",
+        "machining_monitor_server/assets/**"
+      ],
+      "goal": "Add SQLite-backed login flow and themed login dialog with company logo. Seed admin/1234.",
+      "done_when": [
+        "Login required before entering monitor server UI.",
+        "Auth data stored in SQLite with seeded admin/1234 on first run.",
+        "Themed login dialog matches dark concept and shows company logo."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/AGENT-T5.md"
+    },
+    {
+      "task_id": "AGENT-T6",
+      "enabled": false,
+      "engine": "codex",
+      "owner": "Codex-E",
+      "role": "Validation/QA",
+      "work_method": "validate",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/**",
+        "machining_auto/**",
+        "RUN_COMMANDS.md",
+        "orchestrator/status_report.md"
+      ],
+      "goal": "Run targeted validation for tasks 1-5 and produce command/result report with pass/fail checklist.",
+      "done_when": [
+        "Validation commands are executed and outputs summarized.",
+        "Connection/tool-preset/coolant/login/ui scenarios are each explicitly verified.",
+        "Report includes reproducible run commands and residual issues."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/AGENT-T6.md"
+    }
+  ]
+}

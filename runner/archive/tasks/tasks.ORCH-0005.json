@@ -1,0 +1,120 @@
+﻿{
+  "orch_id": "ORCH-0005",
+  "workspace": "d:\\Development",
+  "defaults": {
+    "model": "gpt-5.3-codex",
+    "reasoning_effort": "xhigh",
+    "global_prompt": "",
+    "sandbox": "workspace-write",
+    "approval": "never",
+    "search": false,
+    "codex_dangerously_bypass": true,
+    "read_only_guard": true,
+    "history_readonly_guard": false,
+    "claude_cmd": "claude-code",
+    "claude_continue": false,
+    "claude_args": [
+      "--print",
+      "{prompt}"
+    ],
+    "claude_stdin": false
+  },
+  "workers": [
+    {
+      "task_id": "ORCH-0005-T1",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-A",
+      "role": "HistoryDefault/KPI",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
+        "machining_monitor_server/runtime/controller.py"
+      ],
+      "goal": "Make utilization tab the default landing view and add top KPIs for daily/weekly/monthly/yearly overall averages.",
+      "done_when": [
+        "Dialog opens on utilization log tab by default.",
+        "Top KPI cards show fleet-wide daily/weekly/monthly/yearly average utilization.",
+        "No regression in existing live runtime polling flow."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0005-T1.md"
+    },
+    {
+      "task_id": "ORCH-0005-T2",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-B",
+      "role": "Fleet/Grouping",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/diagnostics/runtime_history_store.py",
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py"
+      ],
+      "goal": "Add machine grouping capability and show full-machine utilization list with group filter.",
+      "done_when": [
+        "All registered machines are listed in utilization fleet table.",
+        "Group selector exists and filters fleet rows.",
+        "Machine-group mapping persists in DB."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0005-T2.md"
+    },
+    {
+      "task_id": "ORCH-0005-T3",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-C",
+      "role": "Period/Range",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
+        "machining_monitor_server/diagnostics/runtime_history_store.py"
+      ],
+      "goal": "Strengthen period controls (preset + custom) and ensure DB-backed refresh for all utilization widgets/tables.",
+      "done_when": [
+        "Period controls drive all utilization widgets consistently.",
+        "Changing range refreshes KPI cards, fleet table, and timeline together.",
+        "No auto-reset to unrelated snapshot/live state while in utilization tab."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0005-T3.md"
+    },
+    {
+      "task_id": "ORCH-0005-T4",
+      "enabled": true,
+      "engine": "codex",
+      "owner": "Codex-D",
+      "role": "Permission/Realtime",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/app.py",
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py",
+        "machining_monitor_server/runtime/controller.py"
+      ],
+      "goal": "Separate realtime vs utilization by permission and keep utilization as default for web/limited roles.",
+      "done_when": [
+        "A permission/config flag controls realtime tab visibility/access.",
+        "Without permission, only utilization-focused workflow is visible.",
+        "With permission, realtime remains available and functional."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0005-T4.md"
+    },
+    {
+      "task_id": "ORCH-0005-T5",
+      "enabled": true,
+      "engine": "claude-cli",
+      "owner": "Claude",
+      "role": "UI/Design",
+      "repo": "machining_monitor_server",
+      "scope_paths": [
+        "machining_monitor_server/styles/runtime_monitor.qss",
+        "machining_monitor_server/diagnostics/runtime_info_dialog.py"
+      ],
+      "goal": "Refine utilization page visual hierarchy and spacing for operator-friendly scanability.",
+      "done_when": [
+        "Top KPIs, period controls, and fleet list are visually separated and readable.",
+        "No overlap/crowding at common resolutions (1920x1080 and 2560x1440).",
+        "Design remains consistent with monitor app style tokens."
+      ],
+      "prompt_file": "orchestrator/runner/prompts/ORCH-0005-T5.md"
+    }
+  ]
+}
