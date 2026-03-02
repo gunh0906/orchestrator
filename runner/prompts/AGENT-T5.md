@@ -1,23 +1,16 @@
-You are executing task {{TASK_ID}}.
+You are executing task {{TASK_ID}} (Owner: {{OWNER}}, Repo: {{REPO}}).
 
-Owner: {{OWNER}}
-Repo: {{REPO}}
-Scope paths (do not edit outside):
+Scope paths (only edit within these):
 {{SCOPE_PATHS}}
 
-Goal:
+YOUR GOAL (implement this NOW, do not wait for further instructions):
 {{GOAL}}
 
 Done when:
 {{DONE_WHEN}}
 
-Execution constraints:
-- Validate these scenarios with executable commands and concrete outputs:
-  1) app server ON/OFF + startup flow
-  2) connect-all confirmation and start behavior
-  3) realtime graph visible and Scope naming reflected
-  4) app admin settings availability
-- Summarize pass/fail, changed files, and residual risks.
-- Update both `D:\\Development\\orchestrator\\results.md` and `D:\\Development\\orchestrator\\status_report.md`.
+Constraints:
+- Only edit within scope paths listed above.
 - Keep edits UTF-8.
-
+- Do NOT run git reset/rollback/revert.
+- After implementing, run python -m py_compile on changed files to verify.

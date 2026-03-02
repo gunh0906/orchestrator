@@ -140,7 +140,7 @@ def _with_global_prompt(prompt: str, defaults: dict[str, Any], worker: dict[str,
     global_prompt = str(raw_global or "").strip()
     if not global_prompt:
         return prompt
-    return f"{global_prompt}\n\n---\n\n{prompt}".strip()
+    return f"{global_prompt}\n\n{prompt}".strip()
 
 
 def _to_list_args(value: Any, default: list[str]) -> list[str]:
@@ -152,6 +152,31 @@ def _to_list_args(value: Any, default: list[str]) -> list[str]:
         except Exception:
             return [value]
     return list(default)
+
+
+def _build_gemini_command(
+    *,
+    workspace: str,
+    prompt: str,
+    yolo: bool = True,
+) -> list[str]:
+    cmd_bin = "gemini"
+    found = shutil.which(cmd_bin)
+    if found:
+        cmd_bin = found
+    else:
+        for cand in ["gemini.cmd", "gemini.exe", "gemini.ps1"]:
+            found = shutil.which(cand)
+            if found:
+                cmd_bin = found
+                break
+
+    cmd = [cmd_bin]
+    if yolo:
+        cmd.append("--yolo")
+    # Use -p for non-interactive single-prompt mode
+    cmd.extend(["-p", prompt])
+    return cmd
 
 
 def _build_codex_command(
@@ -196,7 +221,8 @@ def _build_codex_command(
         cmd.append("--dangerously-bypass-approvals-and-sandbox")
     if skip_git_repo_check:
         cmd.append("--skip-git-repo-check")
-    cmd.append(prompt)
+    # Use stdin for prompt to avoid Windows command-line length limits
+    cmd.append("-")
     return cmd
 
 
@@ -523,6 +549,14 @@ def main() -> int:
                 codex_cmd=codex_cmd_default,
                 dangerously_bypass=codex_dangerously_bypass_default,
             )
+            stdin_text = prompt
+        elif engine == "gemini":
+            command = _build_gemini_command(
+                workspace=str(worker_workspace),
+                prompt=prompt,
+                yolo=True,
+            )
+            stdin_text = None  # gemini -p uses command-line prompt
         elif engine in {"claude", "claude-cli"}:
             command, stdin_text, err = _build_claude_command(prompt=prompt, worker=worker, defaults=defaults)
             if err:

@@ -1,35 +1,16 @@
-You are executing task {{TASK_ID}} as **[Sub Agent: Claude]**.
+You are executing task {{TASK_ID}} (Owner: {{OWNER}}, Repo: {{REPO}}).
 
-Owner: {{OWNER}}
-Repo: {{REPO}}
-Scope paths (do not edit outside):
+Scope paths (only edit within these):
 {{SCOPE_PATHS}}
 
-Goal:
+YOUR GOAL (implement this NOW, do not wait for further instructions):
 {{GOAL}}
 
 Done when:
 {{DONE_WHEN}}
 
-Fixed responsibilities (do not change role):
-1. Identify UX problems with severity, user impact, and exact reproduction steps.
-2. Write counterexample scenarios (edge/failure/permission/data inconsistency) that can break current UX.
-3. Review design consistency across app/web (layout, hierarchy, spacing, color, naming, interaction states).
-4. Analyze structural defects that can re-create UX bugs (state coupling, hidden controls, refresh loops, fragile toggles).
-5. Run final quality gate and hand off to PM.
-
-PM handoff contract:
-- Output must include:
-  - `ACCEPT`: ready to ship
-  - `REWORK`: requires rerun
-  - `RERUN_OWNER`: `AGENT-T4 [Sub Agent: Claude]`
-  - `RERUN_SCOPE`: exact files/features to rerun
-- If PM marks `REWORK`, same AGENT-T4 lane must be rerun with this fixed role.
-
-Execution constraints:
-- Prioritize diagnosis quality over code volume.
-- If code changes are required to prove/fix issues, keep patches minimal and traceable.
+Constraints:
+- Only edit within scope paths listed above.
 - Keep edits UTF-8.
-- Update both:
-  - `D:\\Development\\orchestrator\\results.md` section `[{{TASK_ID}}]`
-  - `D:\\Development\\orchestrator\\status_report.md` section `[{{TASK_ID}}]`
+- Do NOT run git reset/rollback/revert.
+- After implementing, run python -m py_compile on changed files to verify.

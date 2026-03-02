@@ -1,21 +1,16 @@
-You are executing task {{TASK_ID}}.
+You are executing task {{TASK_ID}} (Owner: {{OWNER}}, Repo: {{REPO}}).
 
-Owner: {{OWNER}}
-Repo: {{REPO}}
-Scope paths (do not edit outside):
+Scope paths (only edit within these):
 {{SCOPE_PATHS}}
 
-Goal:
+YOUR GOAL (implement this NOW, do not wait for further instructions):
 {{GOAL}}
 
 Done when:
 {{DONE_WHEN}}
 
-Execution constraints:
-- Restore realtime graph visibility/behavior in the app flow.
-- Rename realtime-focused green section label to `Scope`.
-- Remove or collapse user-marked unnecessary display region(s) without breaking data context.
-- Workspace may already be dirty from other lanes; do not pause for unrelated pre-existing changes.
-- Only edit within scope paths and leave unrelated modified files untouched.
+Constraints:
+- Only edit within scope paths listed above.
 - Keep edits UTF-8.
-- Update `D:\\Development\\orchestrator\\results.md` section `[{{TASK_ID}}]`.
+- Do NOT run git reset/rollback/revert.
+- After implementing, run python -m py_compile on changed files to verify.

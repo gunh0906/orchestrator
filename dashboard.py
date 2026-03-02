@@ -561,6 +561,8 @@ def _classify_state(*, running: bool, log_text: str) -> str:
     if not text:
         return "EXITED"
     t = text.lower()
+    # Check the tail (last ~2000 chars) for final outcome signals
+    tail = t[-2000:] if len(t) > 2000 else t
     fail_tokens = [
         "traceback (most recent call last)",
         "i can't find any task definition file",
@@ -578,6 +580,9 @@ def _classify_state(*, running: bool, log_text: str) -> str:
         "changed files",
         "residual risk",
         "runtime risk is low",
+        "implemented for this",
+        "validation run",
+        "tokens used",
     ]
     blocked_tokens = [
         "rejected: blocked by policy",
@@ -585,12 +590,13 @@ def _classify_state(*, running: bool, log_text: str) -> str:
         "[guard]",
         "switched to manual",
     ]
+    # Tail-first: if the ending looks successful, trust it even if mid-log had errors
+    if any(token in tail for token in done_tokens):
+        return "DONE"
+    if any(token in tail for token in blocked_tokens):
+        return "BLOCKED"
     if any(token in t for token in fail_tokens):
         return "FAILED"
-    if any(token in t for token in done_tokens):
-        return "DONE"
-    if any(token in t for token in blocked_tokens):
-        return "BLOCKED"
     return "DONE"
 
 

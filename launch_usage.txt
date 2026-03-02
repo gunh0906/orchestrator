@@ -1,0 +1,27 @@
+# launch.ps1 사용법
+
+# === Claude Opus PM 루프 (권장) ===
+# 1단계: Claude Opus가 상위 계획 수립 후 PmRequest로 전달
+# 2단계: PM delegate가 코드 분석 + 태스크 카드 작성 + 워커 배정
+# 3단계: 워커 실행 & 완료 대기 (-Wait)
+# 4단계: Claude Opus가 results.md / status_report.md 읽고 최종 검토
+
+# 전체 자동화 (완료까지 대기 + 결과 요약)
+powershell -File D:/Development/orchestrator/launch.ps1 -Wait -NoBrowser -PmRequest "작업 내용"
+
+# === 기본 명령어 ===
+
+# 대시보드만 띄우고 브라우저 열기 (워커 미실행)
+powershell -File D:/Development/orchestrator/launch.ps1 -DryRun
+
+# 전체 실행 (대시보드 + 브라우저 + 워커, 대기 없이 백그라운드)
+powershell -File D:/Development/orchestrator/launch.ps1 -PmRequest "작업 내용"
+
+# 브라우저 안 열고 전체 실행
+powershell -File D:/Development/orchestrator/launch.ps1 -PmRequest "작업 내용" -NoBrowser
+
+# 완료까지 대기 후 결과 요약 출력
+powershell -File D:/Development/orchestrator/launch.ps1 -Wait -PmRequest "작업 내용"
+
+# 파라미터 전체 예시
+powershell -File D:/Development/orchestrator/launch.ps1 -OrchId AGENT -Model gpt-5.3-codex -ReasoningEffort xhigh -PmRequest "작업 내용" -MinWorkers 1 -MaxWorkers 6 -Wait -NoBrowser
