@@ -1,0 +1,28 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Temp files
+_dash_script_tmp.js
+
+# Run logs & manifests (generated per execution)
+runs/
+
+# Orchestrator outputs (generated)
+results.md
+status_report.md
+
+# Task files (overwritten each run)
+runner/tasks.*.json
+runner/tasks.*.backup.json
+
+# GUI logs
+control_gui_logs/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
