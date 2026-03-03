@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang='ko'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>ORCH Dashboard</title>
+<link rel='stylesheet' href='/static/style.css'>
+</head>
+<body>
+<div class='top'>
+  <div class='top-brand'>
+    <div class='top-logo'>A</div>
+    <div>
+      <div class='top-title'>Orchestrator Dashboard</div>
+      <div class='top-subtitle'>Facility Integrated Control</div>
+    </div>
+  </div>
+  <div class='row'>
+    <button onclick='refreshAll()'>Refresh</button>
+  </div>
+</div>
+<div class='wrap'>
+  <div class='left'>
+    <div class='card'>
+      <div class='row'>
+        <input id='orch' value='AGENT' style='width:90px'>
+        <select id='run' onchange='loadRun()' style='width:240px'></select>
+        <button onclick='refreshRuns()' style='padding:0 6px'>&#x27F3;</button>
+      </div>
+      <div class='row' style='margin-top:10px'>
+        <button onclick='startRun(false)'>Start</button>
+        <button onclick='stopRun()' class='btn-danger'>Stop</button>
+      </div>
+    </div>
+    <div class='card' style='display:grid;grid-template-rows:auto 1fr;gap:8px;min-height:0'>
+      <div style='font-size:14px;font-weight:800'>Worker / Role Planner</div>
+      <div class='cfg' id='cfg'></div>
+    </div>
+  </div>
+  <div class='right'>
+    <div class='card'>
+      <div class='kpi-row'>
+        <div class='kpi-item'><span class='kpi-label'>Running</span><span class='kpi-value' id='m1'>0</span></div>
+        <div class='kpi-item'><span class='kpi-label'>Total</span><span class='kpi-value' id='m2'>0</span></div>
+        <div class='kpi-item'><span class='kpi-label'>Tokens</span><span class='kpi-value' id='m5'>0</span></div>
+      </div>
+      <div class='pm' style='margin-top:12px'>
+        <div class='cell'><div class='k'>PM</div><div class='v' id='pmName'>Codex-PM</div></div>
+        <div class='cell'><div class='k'>마지막 업데이트</div><div class='v' id='pmLast'>-</div></div>
+        <div class='cell'><div class='k'>진행률</div><div class='v' id='pmProg'>0.0%</div></div>
+      </div>
+      <div id='msg' class='msg'>(status)</div>
+    </div>
+    <div class='card' style='display:grid;grid-template-rows:1fr;min-height:0'>
+      <div class='tbl'><table><thead><tr><th>Task</th><th>Owner</th><th>Role</th><th>Engine</th><th>PID</th><th>State</th><th>CPU</th><th>MEM</th><th>Progress</th><th>Tokens</th><th>Activity</th><th>Log</th><th>Docs</th></tr></thead><tbody id='wb'></tbody></table></div>
+    </div>
+  </div>
+</div>
+<script src='/static/app.js'></script>
+</body>
+</html>

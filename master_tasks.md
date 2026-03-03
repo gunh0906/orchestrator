@@ -35,7 +35,7 @@
 ## TODO
 
 ### [ORCH-0002-T2] Monitor server UI/QSS parity
-- status: DOING
+- status: DONE
 - owner: Claude (UI/Relay)
 - repo: `orchestrator`
 - scope_paths:
@@ -134,6 +134,21 @@
 
 ## DONE
 
+### [ORCH-0002-T2] Monitor server UI/QSS parity
+- status: DONE
+- owner: Claude (UI/Relay)
+- result:
+  - Stabilized planner grid by adding min-width and flexible column distribution in CSS.
+  - Grouped buttons in left card to remove clutter and ensure alignment on 1080p/2K/4K.
+  - Removed unused viewer div and polished popup.html for better readability.
+
+### [ORCH-0003-T2] Dashboard UI redesign and usability
+- status: DONE
+- owner: Claude (UI/Relay)
+- result:
+  - Replaced log panel background with app-consistent light theme (#f8fbff).
+  - Improved layout spacing and button grouping for intuitive control.
+
 ### [ORCH-0002-T5] connection_manager import path hardening
 - status: DONE
 - owner: Codex-D (Import/IDE)
@@ -174,7 +189,7 @@
   - Old start/stop flow still works without UI changes.
 
 ### [ORCH-0003-T2] Dashboard UI redesign and usability
-- status: TODO
+- status: DONE
 - owner: Claude (UI/Relay)
 - repo: `orchestrator`
 - scope_paths:

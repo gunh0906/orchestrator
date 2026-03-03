@@ -40,6 +40,13 @@ ORCH_DOCS = [
     ROOT / "integration.md",
     ROOT / "results.md",
 ]
+STATIC_DIR = ROOT / "dashboard_static"
+_STATIC_DIR_RESOLVED = STATIC_DIR.resolve()
+_STATIC_CONTENT_TYPES = {
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".html": "text/html; charset=utf-8",
+}
 
 
 def _read_pm_settings() -> dict[str, Any]:
@@ -219,6 +226,25 @@ def _save_json(path: Path, payload: dict[str, Any]) -> tuple[bool, str]:
         return True, str(path)
     except Exception as exc:
         return False, str(exc)
+
+
+def _read_static(filename: str) -> str:
+    path = _resolve_static_file(filename)
+    if path is None:
+        raise FileNotFoundError(f"static not found: {filename}")
+    return path.read_text(encoding="utf-8")
+
+
+def _resolve_static_file(filename: str) -> Path | None:
+    try:
+        rel = Path(str(filename).strip("/\\"))
+        candidate = (STATIC_DIR / rel).resolve()
+        candidate.relative_to(_STATIC_DIR_RESOLVED)
+        if not candidate.exists() or not candidate.is_file():
+            return None
+        return candidate
+    except Exception:
+        return None
 
 
 def _safe_resolve(path_raw: str) -> Path | None:
@@ -920,6 +946,26 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b)
 
+    def _static(self, filename: str) -> None:
+        path = _resolve_static_file(filename)
+        if path is None:
+            self._json({"ok": False, "error": "not found"}, HTTPStatus.NOT_FOUND)
+            return
+        ctype = _STATIC_CONTENT_TYPES.get(path.suffix.lower(), "application/octet-stream")
+        try:
+            b = path.read_bytes()
+        except Exception as exc:
+            self._json({"ok": False, "error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        self.send_header("Content-Length", str(len(b)))
+        self.end_headers()
+        self.wfile.write(b)
+
     def _body(self) -> dict[str, Any]:
         try:
             n = int(self.headers.get("Content-Length", "0"))
@@ -934,7 +980,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         p = urlparse(self.path)
         if p.path == "/":
-            self._html(INDEX_HTML)
+            try:
+                self._html(_read_static("index.html"))
+            except Exception as exc:
+                self._json({"ok": False, "error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+        if p.path.startswith("/static/"):
+            filename = unquote(p.path[len("/static/") :].strip("/"))
+            self._static(filename)
             return
         if p.path == "/api/runs":
             qs = parse_qs(p.query)
@@ -971,15 +1024,20 @@ class Handler(BaseHTTPRequestHandler):
             run_name, task_id = seg.split("/log/", 1)
             qs = parse_qs(p.query)
             n = int((qs.get("tail") or ["180"])[0])
-            manifest = _read_json(RUNS_ROOT / unquote(run_name) / "manifest.json")
+            run_name_unquoted = unquote(run_name)
+            task_id_unquoted = unquote(task_id)
+            manifest = _read_json(RUNS_ROOT / run_name_unquoted / "manifest.json")
             if not manifest:
                 self._json({"ok": False, "error": "manifest not found"})
                 return
-            log_file = next((Path(str(e.get("log_file", ""))) for e in manifest.get("started", []) if str(e.get("task_id", "")) == unquote(task_id)), None)
-            if log_file is None:
+            entry = next((e for e in manifest.get("started", []) if str(e.get("task_id", "")) == task_id_unquoted), None)
+            if entry is None:
                 self._json({"ok": False, "error": "task not found"})
                 return
-            self._json({"ok": True, "text": _tail(log_file, n)})
+            log_path = _safe_resolve(str(entry.get("log_file", "")))
+            if not log_path:
+                log_path = RUNS_ROOT / run_name_unquoted / f"{task_id_unquoted}.log"
+            self._json({"ok": True, "text": _tail(log_path, n)})
             return
         if p.path == "/api/read":
             qs = parse_qs(p.query)
@@ -1026,425 +1084,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: Any) -> None:
         return
-
-INDEX_HTML = """<!doctype html>
-<html lang='ko'>
-<head>
-<meta charset='UTF-8'>
-<meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>ORCH Dashboard</title>
-<style>
-:root{--bg:#eef3fb;--card:#f8fbff;--line:#c8d7ef;--text:#10274f;--top1:#1f3f8f;--top2:#3152a9;--ok:#0f8b3d;--bad:#b42318}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;text-align:center}
-.top{height:56px;background:linear-gradient(90deg,var(--top1),var(--top2));color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 12px}
-.top .row{justify-content:flex-end}
-.wrap{height:calc(100vh - 56px);display:grid;grid-template-columns:minmax(520px,34vw) 1fr;gap:10px;padding:10px;overflow:hidden}
-.left{display:grid;grid-template-rows:auto 1fr;gap:10px;min-height:0}.right{display:grid;grid-template-rows:auto 1fr;gap:10px;min-height:0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:0}
-.row{display:flex;gap:7px;align-items:center;justify-content:center;flex-wrap:wrap;text-align:center}
-input,select,button{height:32px;border:1px solid #b6c7e4;border-radius:8px;padding:0 9px;font-size:13px;color:var(--text);text-align:center}
-button{font-weight:700;cursor:pointer}
-.tbl{overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;min-height:0}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th,td{border-bottom:1px solid #e6edfb;padding:6px 8px;text-align:center;vertical-align:middle}
-th{position:sticky;top:0;background:#eef4ff;font-weight:800}
-.ok{color:var(--ok);font-weight:800}.warn{color:#b26b00;font-weight:800}.bad{color:var(--bad);font-weight:800}
-.bar{width:120px;height:9px;border-radius:999px;background:#e4edfc;overflow:hidden;border:1px solid #cedbf3;margin:0 auto}
-.bar span{display:block;height:100%}.cpu span{background:#2b67dc}.mem span{background:#19a68a}.prog span{background:#159a6a}
-.spark{width:120px;height:22px;margin:0 auto}
-.pm{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:8px;align-items:stretch}
-.pm .k{font-size:11px;color:#4f6794}
-.pm .v{font-size:14px;font-weight:800;color:#10274f}
-.pm .cell{border:1px solid #d4e2f7;border-radius:8px;background:#f4f8ff;padding:6px}
-.msg{margin-top:8px;min-height:24px;padding:6px 10px;border:1px solid #d4e2f7;border-radius:8px;background:#f4f8ff;color:#27406f;font-size:12px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cfg{overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;min-height:0}
-.cfr{display:grid;grid-template-columns:32px 52px 122px 88px 120px 118px 108px 88px 1fr 58px;gap:6px;padding:6px;border-bottom:1px solid #e9f0fc;align-items:center;text-align:center}
-.cfr input,.cfr select{width:100%;min-width:0}
-.head{position:sticky;top:0;background:#eef4ff;font-weight:800;z-index:1}
-input[type='checkbox']{width:18px;height:18px;padding:0;margin:0 auto;accent-color:#2b67dc;cursor:pointer}
-.role-pill{display:inline-block;border:1px solid #9bb3e7;border-radius:999px;padding:2px 8px;font-size:11px;background:#ecf2ff;margin-right:6px;margin-bottom:4px}
-.viewer{display:none}
-.doc-item{display:grid;grid-template-columns:84px 1fr 80px 160px 74px;gap:8px;padding:6px 8px;border-bottom:1px solid #e9f0fc;align-items:center;text-align:center}
-.doc-item:last-child{border-bottom:none}
-.activity{max-width:260px;margin:0 auto;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#27406f;font-size:12px}
-</style>
-</head>
-<body>
-<div class='top'>
-  <div style='font-size:20px;font-weight:800'>Orchestrator Dashboard</div>
-  <div class='row'>
-    <input id='pmNameIn' placeholder='PM name' style='width:120px'>
-    <button onclick='savePmName()'>SavePM</button>
-    <span id='toolCodex'>codex:-</span>
-    <span id='toolClaude'>claude:-</span>
-    <label>Auto</label><input id='auto' type='checkbox' checked>
-    <label>sec</label><input id='sec' type='number' min='1' max='30' value='3' style='width:62px'>
-    <button onclick='refreshAll()'>Refresh</button>
-  </div>
-</div>
-<div class='wrap'>
-  <div class='left'>
-    <div class='card'>
-      <div class='row'><input id='orch' value='AGENT' style='width:120px'><select id='run' onchange='loadRun()' style='width:260px'></select></div>
-      <div class='row' style='margin-top:8px'><input id='model' value='gpt-5.3-codex' style='width:160px'><input id='reason' value='xhigh' style='width:90px'><button onclick='startRun(false)'>Start</button><button onclick='startRun(true)'>DryRun</button><button onclick='stopRun()'>Stop</button></div>
-      <div class='row' style='margin-top:8px'><label style='font-weight:700'>Global Prompt</label><input id='globalPrompt' placeholder='all workers common instruction' style='width:min(680px,95%)'><button onclick='saveCfg()'>ApplyPrompt</button></div>
-      <div class='row' style='margin-top:8px'>
-        <button onclick='loadCfg()'>LoadCfg</button><button onclick='saveCfg()'>SaveCfg</button>
-        <button onclick='addW(\"codex\")'>+Codex</button><button onclick='addW(\"claude-cli\")'>+Claude</button>
-        <input id='wcnt' type='number' min='1' max='10' value='6' style='width:70px'>
-        <button onclick='applyWorkerCount()'>ApplyCount</button>
-        <button onclick='enableAll(true)'>EnableAll</button><button onclick='enableAll(false)'>DisableAll</button>
-        <button onclick='autoAssignRoles()'>AutoRole</button>
-      </div>
-      <div class='row' style='margin-top:8px'><button onclick='distributeAndStart()'>Distribute+Start</button></div>
-      <div id='sum' style='margin-top:8px;font-size:12px;color:#4f6794'></div>
-      <div id='roleStats' style='margin-top:6px;font-size:12px;color:#4f6794'></div>
-    </div>
-    <div class='card' style='display:grid;grid-template-rows:auto 1fr;gap:8px;min-height:0'>
-      <div style='font-size:14px;font-weight:800'>Worker / Role Planner (max 10)</div>
-      <div class='cfg' id='cfg'></div>
-    </div>
-  </div>
-  <div class='right'>
-    <div class='card'>
-      <div class='row'><div id='m1'>running:0</div><div id='m2'>total:0</div><div id='m3'>avg cpu:0%</div><div id='m4'>mem:0MB</div><div id='m5'>tokens:0</div></div>
-      <div class='pm' style='margin-top:8px'>
-        <div class='cell'><div class='k'>PM</div><div class='v' id='pmName'>Codex-PM</div></div>
-        <div class='cell'><div class='k'>마지막 업데이트</div><div class='v' id='pmLast'>-</div></div>
-        <div class='cell'><div class='k'>진행률</div><div class='v' id='pmProg'>0.0%</div></div>
-        <div class='cell'><div class='k'>PM cpu/mem/pid</div><div class='v' id='pmRuntime'>0.00% / 0.0MB / -</div></div>
-      </div>
-      <div id='msg' class='msg'>(status)</div>
-    </div>
-    <div class='card' style='display:grid;grid-template-rows:minmax(260px,1fr) minmax(90px,160px);gap:10px;min-height:0'>
-      <div class='tbl'><table><thead><tr><th>Task</th><th>Owner</th><th>Role</th><th>Engine</th><th>PID</th><th>State</th><th>CPU</th><th>MEM</th><th>Progress</th><th>Tokens</th><th>Activity</th><th>Log</th><th>Docs</th></tr></thead><tbody id='wb'></tbody></table></div>
-      <div class='tbl'><table><thead><tr><th>Manual</th><th>Owner</th><th>Role</th><th>Engine</th><th>Repo</th><th>Goal</th></tr></thead><tbody id='mb'></tbody></table></div>
-    </div>
-  </div>
-</div>
-<div id='viewer' class='viewer'><div class='viewer-card'><div class='viewer-head'><div id='viewerTitle'>View</div><button onclick='closeViewer()'>Close</button></div><div id='viewerBody' class='viewer-body'>(no data)</div></div></div>
-<script>
-let cfg=null,hist={},timer=null,pmState=null;
-const METHOD_ROLE_MAP={connection:'Core/Connection',ui:'UI/Design',runtime:'Backend/Runtime',diagnostics:'Diagnostics/Search',auth:'Auth/Login',validate:'Validation/QA',integration:'Integration',custom:'Custom'};
-const suggestRoleByMethod=(m)=>METHOD_ROLE_MAP[String(m||'').trim().toLowerCase()]||'Worker';
-function methodOptions(selected){
-  const cur=String(selected||'').trim().toLowerCase();
-  const items=['connection','ui','runtime','diagnostics','auth','validate','integration','custom'];
-  return items.map(v=>`<option value='${v}' ${cur===v?'selected':''}>${v}</option>`).join('');
-}
-const q=(s)=>document.querySelector(s),qa=(s)=>[...document.querySelectorAll(s)];
-async function api(u,o={}){
-  const hasQ = u.includes('?');
-  const url = `${u}${hasQ?'&':'?'}_ts=${Date.now()}`;
-  const opts = Object.assign({cache:'no-store'}, o||{});
-  const r = await fetch(url, opts);
-  return await r.json();
-}
-const esc=(v)=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
-function push(task,cpu,mem){if(!hist[task])hist[task]={cpu:[],mem:[]};hist[task].cpu.push(Number(cpu||0));hist[task].mem.push(Number(mem||0));while(hist[task].cpu.length>40)hist[task].cpu.shift();while(hist[task].mem.length>40)hist[task].mem.shift();}
-function spark(task){
-  const h=hist[task]||{cpu:[],mem:[]}; const c=h.cpu||[]; const m=h.mem||[];
-  if(c.length<2&&m.length<2)return `<svg class='spark' viewBox='0 0 120 22'><line x1='0' y1='18' x2='120' y2='18' stroke='#cbd8f2'/></svg>`;
-  const n=Math.max(c.length,m.length), st=120/Math.max(1,n-1);
-  const maxv = Math.max(1, ...c.map(v=>Number(v||0)), ...m.map(v=>Number(v||0)));
-  const y=(v)=>`${(18-Math.max(0,Math.min(16,(Number(v||0)/maxv)*16))).toFixed(1)}`;
-  const pc=c.map((v,i)=>`${(i*st).toFixed(1)},${y(v)}`).join(' ');
-  const pm=m.map((v,i)=>`${(i*st).toFixed(1)},${y(v)}`).join(' ');
-  return `<svg class='spark' viewBox='0 0 120 22'>
-    <polyline fill='none' stroke='#2b67dc' stroke-width='1.4' points='${pc}'/>
-    <polyline fill='none' stroke='#19a68a' stroke-width='1.4' points='${pm}'/>
-    <line x1='0' y1='18' x2='120' y2='18' stroke='#cbd8f2'/>
-  </svg>`;
-}
-function bar(cls,val){const v=Math.max(0,Math.min(100,Number(val)||0));return `<div class='bar ${cls}'><span style='width:${v}%'></span></div>`;}
-function _htmlSafe(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
-function openViewer(title,text){
-  const t = String(text ?? '');
-  const win = window.open('', '_blank', 'width=1120,height=820,resizable=yes,scrollbars=yes');
-  if(!win){ setLogText('Popup blocked. Allow popups to view logs.'); return; }
-  const safeTitle = _htmlSafe(title || 'View');
-  const safeText = _htmlSafe(t);
-  const popupScript = "<scr"+"ipt>document.getElementById('copyBtn').onclick=async()=>{const v=document.getElementById('txt').value;try{await navigator.clipboard.writeText(v);}catch(e){document.getElementById('txt').select();document.execCommand('copy');}};</scr"+"ipt>";
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${safeTitle}</title>
-  <style>body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#eef3fb;color:#10274f}
-  .top{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:#3152a9;color:#fff}
-  .btn{height:30px;border:1px solid #b6c7e4;border-radius:8px;padding:0 10px;background:#fff;color:#10274f;font-weight:700;cursor:pointer}
-  #txt{width:100%;height:calc(100vh - 48px);box-sizing:border-box;border:0;outline:none;padding:12px;font-family:Consolas,'Courier New',monospace;font-size:12px;background:#f7faff;color:#183059;white-space:pre}</style>
-  </head><body><div class="top"><div>${safeTitle}</div><div><button class="btn" id="copyBtn">Copy</button></div></div>
-  <textarea id="txt" readonly>${safeText}</textarea>
-  ${popupScript}
-  </body></html>`;
-  win.document.open(); win.document.write(html); win.document.close();
-}
-function closeViewer(){ return; }
-function setDocsText(t){ setLogText(String(t||'')); }
-function setLogText(t){
-  const el=q('#msg');
-  if(!el) return;
-  el.textContent=String(t||'');
-}
-function renderRoleSummary(items){if(!items||!items.length){q('#roleStats').textContent='';return;}q('#roleStats').innerHTML=items.map(x=>`<span class='role-pill'>${esc(x.role)}: ${Number(x.progress||0).toFixed(1)}% (${Number(x.workers||0)})</span>`).join(' ');}
-
-async function refreshTools(){const d=await api('/api/tools');q('#toolCodex').textContent=`codex:${d.codex?'OK':'MISS'}`;q('#toolClaude').textContent=`claude:${d.claude?d.claude_cmd:'MISS'}`;}
-async function refreshPm(){
-  const d=await api('/api/pm');
-  if(!d||!d.ok)return;
-  pmState=d;
-  q('#pmName').textContent=d.pm_name||'Codex-PM';
-  q('#pmNameIn').value=d.pm_name||'Codex-PM';
-  q('#pmLast').textContent=d.last_update||'-';
-  q('#pmProg').textContent=`${Number(d.progress||0).toFixed(1)}%`;
-  const pid = Number(d.pid||0);
-  const cpu = Number(d.metrics?.cpu_percent||0).toFixed(2);
-  const mem = Number(d.metrics?.rss_mb||0).toFixed(1);
-  q('#pmRuntime').textContent=`${cpu}% / ${mem}MB / ${pid||'-'}`;
-  if(pid){ setLogText(`PM pid=${pid} cpu=${cpu}% mem=${mem}MB`); }
-}
-async function savePmName(){const name=(q('#pmNameIn').value||'').trim();if(!name){setLogText('pm name is empty');return;}const d=await api('/api/pm/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pm_name:name})});setLogText(d.ok?`pm saved: ${name}`:`pm save failed: ${d.error||''}`);await refreshPm();}
-async function refreshRuns(){
-  const orch=(q('#orch').value||'').trim().toUpperCase();
-  let d=await api('/api/runs'+(orch?`?orch=${encodeURIComponent(orch)}`:''));
-  if((!d.runs||!d.runs.length) && orch){
-    d=await api('/api/runs');
-    const first=(d.runs||[])[0];
-    if(first && first.orch_id){ q('#orch').value=first.orch_id; }
-  }
-  const s=q('#run'),cur=s.value;
-  s.innerHTML='';
-  (d.runs||[]).forEach(r=>{
-    const o=document.createElement('option');
-    o.value=r.name;
-    o.textContent=`${r.name} (${r.running}/${r.total})`;
-    s.appendChild(o);
-  });
-  if(cur&&qa('#run option').some(x=>x.value===cur)) s.value=cur;
-  else if(d.latest) s.value=d.latest;
-}
-
-function mkWorker(i,engine='codex'){
-  const orch=(q('#orch').value||'AGENT').trim().toUpperCase();
-  const work_method=engine==='claude-cli'?'ui':'connection';
-  return {task_id:`${orch}-T${i+1}`,enabled:true,engine:engine,owner:engine==='claude-cli'?'Claude':`Codex-${String.fromCharCode(65+i)}`,role:suggestRoleByMethod(work_method),work_method,repo:'orchestrator',scope_paths:['orchestrator/dashboard.py'],goal:'',done_when:[],prompt_file:`orchestrator/runner/prompts/${orch}-T${i+1}.md`};
-}
-function ensureCfg(){
-  if(cfg) return;
-  cfg={orch_id:(q('#orch').value||'AGENT').trim().toUpperCase(),workspace:'d:\\\\Development',defaults:{model:q('#model').value||'gpt-5.3-codex',reasoning_effort:q('#reason').value||'xhigh',global_prompt:(q('#globalPrompt').value||''),sandbox:'workspace-write',approval:'never',search:false,read_only_guard:true,history_readonly_guard:true,single_run_dir:true,clean_run_dir:true,prune_legacy_runs:true,claude_cmd:'claude',claude_continue:true,claude_args:['--print','{prompt}'],claude_stdin:false},workers:[]};
-}
-function renderCfg(){
-  ensureCfg();
-  const box=q('#cfg');
-  const rows=(cfg.workers||[]).map((w,idx)=>`<div class='cfr'><div>${idx+1}</div><input type='checkbox' data-k='enabled' data-i='${idx}' ${w.enabled!==false?'checked':''}><input data-k='task_id' data-i='${idx}' value='${esc(w.task_id||'')}'><input data-k='owner' data-i='${idx}' value='${esc(w.owner||'')}'><input data-k='role' data-i='${idx}' value='${esc(w.role||'')}'><select data-k='engine' data-i='${idx}'><option value='codex' ${w.engine==='codex'?'selected':''}>codex</option><option value='claude-cli' ${w.engine==='claude-cli'?'selected':''}>claude-cli</option><option value='claude-manual' ${w.engine==='claude-manual'?'selected':''}>claude-manual</option><option value='manual' ${w.engine==='manual'?'selected':''}>manual</option></select><select data-k='work_method' data-i='${idx}'>${methodOptions(w.work_method||'')}</select><input data-k='repo' data-i='${idx}' value='${esc(w.repo||'')}'><input data-k='prompt_file' data-i='${idx}' value='${esc(w.prompt_file||'')}'><button onclick='removeAt(${idx})'>Del</button></div>`).join('');
-  box.innerHTML=`<div class='cfr head'><div>#</div><div>on</div><div>task_id</div><div>owner</div><div>role</div><div>engine</div><div>method</div><div>repo</div><div>prompt_file</div><div>act</div></div>${rows || "<div style='padding:10px;color:#5770a0'>no workers</div>"}`;
-  box.querySelectorAll('input[data-k],select[data-k]').forEach(el=>{
-    el.addEventListener('change', async ()=>{
-      const i=Number(el.getAttribute('data-i')||0),k=el.getAttribute('data-k');
-      if(!cfg?.workers?.[i]||!k) return;
-      if(k==='enabled'){
-        cfg.workers[i][k]=el.checked;
-        await saveCfg(true);
-      } else if(k==='work_method'){
-        cfg.workers[i][k]=el.value;
-        cfg.workers[i]['role']=suggestRoleByMethod(el.value);
-        renderCfg();
-      } else {
-        cfg.workers[i][k]=el.value;
-      }
-    });
-  });
-  q('#sum').textContent=`workers: ${cfg.workers.length}/10 | global_prompt: ${String((cfg.defaults&&cfg.defaults.global_prompt)||'').trim()? 'ON':'OFF'} | dynamic-role: ON`;
-}
-function renumberTaskIds(){if(!cfg?.workers) return; const orch=(q('#orch').value||cfg.orch_id||'AGENT').trim().toUpperCase(); cfg.workers.forEach((w,i)=>{w.task_id=`${orch}-T${i+1}`;});}
-function removeAt(i){if(!cfg?.workers) return; cfg.workers.splice(i,1); renumberTaskIds(); q('#wcnt').value=String(cfg.workers.length); renderCfg();}
-function addW(engine='codex'){ensureCfg(); if((cfg.workers||[]).length>=10) return; cfg.workers.push(mkWorker(cfg.workers.length,engine)); renumberTaskIds(); q('#wcnt').value=String(cfg.workers.length); renderCfg();}
-function delW(){if(!cfg?.workers?.length) return; cfg.workers.pop(); renumberTaskIds(); q('#wcnt').value=String(cfg.workers.length); renderCfg();}
-function autoWorkers(n){
-  ensureCfg();
-  const m=Math.max(1,Math.min(10,Number(n)||10));
-  cfg.workers=[];
-  for(let i=0;i<m;i++){cfg.workers.push(mkWorker(i, i===1?'claude-cli':'codex'));}
-  renumberTaskIds();
-  q('#wcnt').value=String(m);
-  renderCfg();
-}
-function applyWorkerCount(){ensureCfg(); const n=Math.max(1,Math.min(10,Number(q('#wcnt').value||cfg.workers.length||1))); while(cfg.workers.length<n){cfg.workers.push(mkWorker(cfg.workers.length,'codex'));} while(cfg.workers.length>n){cfg.workers.pop();} renumberTaskIds(); renderCfg();}
-function enableAll(v){ensureCfg(); cfg.workers.forEach(w=>w.enabled=!!v); renderCfg();}
-function autoAssignRoles(){ensureCfg(); cfg.workers.forEach(w=>{const m=w.work_method||(String(w.engine||'').toLowerCase()==='claude-cli'?'ui':'connection'); w.work_method=m; w.role=suggestRoleByMethod(m);}); renderCfg();}
-function setPmDefaultsFromWorkers(){ensureCfg(); if(!cfg.defaults) cfg.defaults={}; cfg.defaults.pm_last_selected=cfg.workers.filter(w=>w.enabled!==false).map(w=>w.task_id); cfg.defaults.pm_last_request=q('#globalPrompt').value||'';}
-function collectEnabledRoles(){ensureCfg(); const counts={}; cfg.workers.filter(w=>w.enabled!==false).forEach(w=>{const k=String(w.role||'Worker'); counts[k]=(counts[k]||0)+1;}); return Object.entries(counts).map(([k,v])=>`${k}:${v}`).join(', ');}
-
-async function loadCfg(){
-  const orch=(q('#orch').value||'AGENT').trim().toUpperCase();
-  const d=await api(`/api/config/${encodeURIComponent(orch)}`);
-  if(!d.ok){setLogText(`load config failed: ${d.error||''}`); return;}
-  cfg=d.config||{};
-  q('#orch').value=cfg.orch_id||orch;
-  q('#model').value=(cfg.defaults&&cfg.defaults.model)||q('#model').value;
-  q('#reason').value=(cfg.defaults&&cfg.defaults.reasoning_effort)||q('#reason').value;
-  q('#globalPrompt').value=(cfg.defaults&&cfg.defaults.global_prompt)||'';
-  if(!cfg.defaults) cfg.defaults={};
-  if(!Array.isArray(cfg.workers)) cfg.workers=[];
-  q('#wcnt').value=String(cfg.workers.length||1);
-  renderCfg();
-}
-
-async function saveCfg(silent=false){
-  ensureCfg();
-  cfg.orch_id=(q('#orch').value||cfg.orch_id||'AGENT').trim().toUpperCase();
-  if(!cfg.defaults) cfg.defaults={};
-  cfg.defaults.model=q('#model').value||'gpt-5.3-codex';
-  cfg.defaults.reasoning_effort=q('#reason').value||'xhigh';
-  cfg.defaults.global_prompt=q('#globalPrompt').value||'';
-  cfg.defaults.read_only_guard = cfg.defaults.read_only_guard !== false;
-  cfg.defaults.history_readonly_guard = cfg.defaults.history_readonly_guard !== false;
-  cfg.defaults.claude_cmd=cfg.defaults.claude_cmd||'claude';
-  cfg.defaults.claude_continue = cfg.defaults.claude_continue !== false;
-  cfg.defaults.claude_args=Array.isArray(cfg.defaults.claude_args)?cfg.defaults.claude_args:['--print','{prompt}'];
-  setPmDefaultsFromWorkers();
-  const d=await api('/api/config/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orch_id:cfg.orch_id,config:cfg})});
-  if(!silent) setLogText(d.ok?`saved: ${d.path} | roles: ${collectEnabledRoles()}`:`save failed: ${d.error||''}`);
-  return !!d.ok;
-}
-
-function renderWorkers(arr){
-  const body=q('#wb');
-  const pmRows = pmState ? [{
-    task_id: `${String(pmState.orch||'AGENT')}-PM`,
-    owner: String(pmState.pm_name||'Codex-PM'),
-    role: 'PM/Orchestrator',
-    engine: 'pm',
-    pid: Number(pmState.pid||0) || '-',
-    state: ((arr||[]).some(x=>String(x.state||'').toUpperCase()==='RUNNING') ? 'RUNNING' : 'IDLE'),
-    metrics: pmState.metrics || {cpu_percent:0,rss_mb:0},
-    progress: Number(pmState.progress||0),
-    tokens: {total: null},
-    activity: `progress_source=${String(pmState.progress_source||'master_tasks')}`,
-    docs_count: 1,
-    _pm: true,
-  }] : [];
-  const rows = [...pmRows, ...(arr||[])];
-  body.innerHTML=rows.map(w=>{
-    const cpu=Number(w.metrics?.cpu_percent||0), mem=Number(w.metrics?.rss_mb||0), prog=Number(w.progress||0);
-    const state=String(w.state||'').toUpperCase();
-    const stClass = (state==='RUNNING' || state==='DONE') ? 'ok' : ((state==='EXITED' || state==='BLOCKED') ? 'warn' : 'bad');
-    const stHint = w.state_hint ? `<div style='font-size:11px;color:#5770a0'>${esc(w.state_hint)}</div>` : '';
-    const cpuCell = `${bar('cpu',cpu)}<div>${cpu.toFixed(3)}%</div>`;
-    const memCell = `${bar('mem',Math.min(100,mem/20))}<div>${mem.toFixed(1)}MB</div>`;
-    const tokTotal = w.tokens && w.tokens.total != null ? Number(w.tokens.total) : null;
-    const tokenCell = tokTotal == null ? '-' : tokTotal.toLocaleString();
-    const logBtn = w._pm
-      ? `<button onclick='viewPmLog()'>View</button>`
-      : `<button onclick='viewLog(\"${esc(w.task_id)}\")'>View</button>`;
-    const docsBtn = w._pm
-      ? `<button onclick='viewPmDocs()'>1</button>`
-      : `<button onclick='viewDocs(\"${esc(w.task_id)}\")'>${Number(w.docs_count||0)}</button>`;
-    return `<tr><td>${esc(w.task_id)}</td><td>${esc(w.owner)}</td><td>${esc(w.role)}</td><td>${esc(w.engine)}</td><td>${w.pid??''}</td><td class='${stClass}'>${esc(state || '-')}</td><td>${cpuCell}</td><td>${memCell}</td><td>${bar('prog',prog)}<div>${prog.toFixed(1)}%</div></td><td>${tokenCell}</td><td><div class='activity' title='${esc(w.activity||'')}'>${esc(w.activity||'-')}</div></td><td>${logBtn}${stHint}</td><td>${docsBtn}</td></tr>`;
-  }).join('');
-}
-function renderManual(arr){
-  const body=q('#mb');
-  body.innerHTML=(arr||[]).map(w=>`<tr><td>${esc(w.task_id||'')}</td><td>${esc(w.owner||'')}</td><td>${esc(w.role||'')}</td><td>${esc(w.engine||'')}</td><td>${esc(w.repo||'')}</td><td>${esc(w.goal||'')}</td></tr>`).join('');
-}
-
-async function loadRun(){
-  const run=q('#run').value;
-  if(!run){return;}
-  const d=await api(`/api/run/${encodeURIComponent(run)}/status`);
-  if(!d.ok){setLogText(`status failed: ${d.error||''}`);return;}
-  const s=d.summary||{};
-  q('#m1').textContent=`running:${s.running||0}`;
-  q('#m2').textContent=`total:${s.total||0}`;
-  q('#m3').textContent=`avg cpu:${Number(s.avg_cpu||0).toFixed(2)}%`;
-  q('#m4').textContent=`mem:${Number(s.mem_mb||0).toFixed(1)}MB`;
-  q('#m5').textContent=`tokens:${Number(s.tokens_total||0).toLocaleString()}`;
-  renderRoleSummary(d.role_summary||[]);
-  renderWorkers(d.workers||[]);
-  renderManual(d.manual||[]);
-}
-
-async function viewLog(task){
-  const run=q('#run').value;
-  if(!run||!task) return;
-  const d=await api(`/api/run/${encodeURIComponent(run)}/log/${encodeURIComponent(task)}?tail=240`);
-  if(!d.ok){setLogText(`log failed: ${d.error||''}`);return;}
-  setLogText(`${task} log opened`);
-  openViewer(`${task} log`, d.text||'');
-}
-async function viewDocs(task){
-  const run=q('#run').value;
-  if(!run||!task) return;
-  const d=await api(`/api/run/${encodeURIComponent(run)}/documents?task=${encodeURIComponent(task)}`);
-  if(!d.ok){setLogText(`docs failed: ${d.error||''}`);return;}
-  const t=(d.tasks||[])[0];
-  const docs=t?.documents||[];
-  if(!docs.length){openViewer(`${task} docs`, "(no docs)");return;}
-  const lines = docs.map(x=>`${x.kind}\t${x.path}\t${x.size}\t${x.mtime}`).join('\\n');
-  setLogText(`${task} docs opened (${docs.length})`);
-  openViewer(`${task} docs`, lines);
-}
-async function viewPmLog(){
-  const d=await api('/api/read?path='+encodeURIComponent('orchestrator/status_report.md'));
-  if(!d.ok){setLogText(`read failed: ${d.error||''}`);return;}
-  setLogText('PM status_report opened');
-  openViewer('PM Status Report', d.text||'');
-}
-async function viewPmDocs(){
-  const docs=[
-    'orchestrator/master_tasks.md',
-    'orchestrator/integration.md',
-    'orchestrator/inbox.md',
-    'orchestrator/results.md',
-    'orchestrator/status_report.md',
-  ];
-  setLogText('PM docs list opened');
-  openViewer('PM docs', docs.join('\\n'));
-}
-async function viewPath(path){
-  const d=await api(`/api/read?path=${encodeURIComponent(path)}`);
-  if(!d.ok){openViewer('read failed', d.error||'');return;}
-  openViewer(d.path||'file', d.text||'');
-}
-
-async function startRun(dry=false){
-  const ok=await saveCfg(true);
-  if(!ok){setLogText('start blocked: config save failed');return;}
-  const orch=(q('#orch').value||'AGENT').trim().toUpperCase();
-  const maxW=Math.max(1,Math.min(10,Number(q('#wcnt').value||cfg?.workers?.length||1)));
-  const d=await api('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orch_id:orch,model:q('#model').value||'gpt-5.3-codex',reasoning_effort:q('#reason').value||'xhigh',pm_request:(q('#globalPrompt').value||'').trim(),pm_delegate:true,min_workers:1,max_workers:maxW,dry_run:!!dry})});
-  setLogText((d.stdout||'') + (d.stderr?`\n${d.stderr}`:''));
-  await refreshRuns();
-  await loadRun();
-}
-async function distributeAndStart(){await startRun(false);}
-async function stopRun(){
-  const run=q('#run').value;
-  const d=await api('/api/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run_name:run})});
-  setLogText((d.stdout||'') + (d.stderr?`\n${d.stderr}`:''));
-  await refreshRuns();
-  await loadRun();
-}
-
-function setAuto(){
-  if(timer){clearInterval(timer);timer=null;}
-  if(!q('#auto').checked) return;
-  const sec=Math.max(1,Math.min(30,Number(q('#sec').value||3)));
-  timer=setInterval(()=>refreshAll(), sec*1000);
-}
-async function refreshAll(){
-  const jobs = [refreshTools(), refreshPm(), refreshRuns()];
-  await Promise.all(jobs.map(p => p.catch(()=>{})));
-  if(!cfg) await loadCfg();
-  await loadRun();
-}
-
-q('#auto').addEventListener('change',setAuto);
-q('#sec').addEventListener('change',setAuto);
-window.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeViewer();});
-window.addEventListener('load',async()=>{await refreshAll();if(cfg?.workers){q('#wcnt').value=String(cfg.workers.length);}setAuto();});
-</script>
-</body>
-</html>
-"""
 
 
 def main() -> int:

@@ -1,0 +1,215 @@
+:root {
+  --corp-blue: #2d4b9b;
+  --corp-blue-strong: #1e3a8a;
+  --corp-red: #e31e24;
+  --surface: #f1f5f9;
+  --surface-2: #e2e8f0;
+  --card: #ffffff;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --text: #0f172a;
+  --text-soft: #475569;
+  --text-mute: #94a3b8;
+  --accent: #2d4b9b;
+  --ok: #10b981;
+  --warn: #eab308;
+  --off: #94a3b8;
+  --danger: #ef4444;
+  --radius: 16px;
+  --shadow: 0 10px 28px rgba(30, 58, 138, 0.08);
+}
+* { box-sizing: border-box }
+body {
+  margin: 0;
+  background: radial-gradient(circle at 8% -10%, #e9f1ff 0%, var(--surface) 45%);
+  color: var(--text);
+  font-family: 'Segoe UI', 'Noto Sans KR', sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+/* ── Top bar ── */
+.top {
+  height: 64px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+.top .row { justify-content: flex-end }
+.top-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.top-logo {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--corp-red);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+}
+.top-title { font-size: 18px; font-weight: 800; color: var(--text) }
+.top-subtitle { font-size: 11px; color: var(--text-mute); margin-top: -2px }
+
+/* ── Layout ── */
+.wrap {
+  height: calc(100vh - 64px);
+  display: grid;
+  grid-template-columns: minmax(540px, 35vw) 1fr;
+  gap: 12px;
+  padding: 12px;
+  overflow: hidden;
+}
+.left { display: grid; grid-template-rows: auto 1fr; gap: 12px; min-height: 0 }
+.right { display: grid; grid-template-rows: auto 1fr; gap: 12px; min-height: 0 }
+
+/* ── Cards ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  min-height: 0;
+}
+
+/* ── Rows ── */
+.row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; text-align: center }
+
+/* ── Inputs ── */
+input, select, button {
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--text);
+  text-align: center;
+  background: #fff;
+}
+input:focus, select:focus { outline: none; border-color: var(--corp-blue) }
+
+/* ── Buttons ── */
+button {
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--corp-blue);
+  color: #fff;
+  border: none;
+  transition: filter 0.15s;
+}
+button:hover { filter: brightness(1.1) }
+
+/* Secondary buttons */
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+.btn-danger { background: var(--danger); color: #fff }
+
+/* ── Tables ── */
+.tbl { overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; min-height: 0 }
+table { width: 100%; border-collapse: collapse; font-size: 12px }
+th, td { border-bottom: 1px solid var(--surface-2); padding: 8px 10px; text-align: center; vertical-align: middle }
+th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+/* State colors */
+.ok { color: var(--ok); font-weight: 800 }
+.warn { color: var(--warn); font-weight: 800 }
+.bad { color: var(--danger); font-weight: 800 }
+
+/* ── Progress bars ── */
+.bar { width: 120px; height: 9px; border-radius: 999px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--line-strong); margin: 0 auto }
+.bar span { display: block; height: 100% }
+.cpu span { background: var(--corp-blue) }
+.mem span { background: var(--ok) }
+.prog span { background: var(--corp-blue) }
+.spark { width: 120px; height: 22px; margin: 0 auto }
+
+/* ── KPI row ── */
+.kpi-row { display: flex; gap: 12px; justify-content: flex-start }
+.kpi-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 24px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px; min-width: 100px;
+}
+.kpi-label { font-size: 11px; color: var(--text-mute); text-transform: uppercase }
+.kpi-value { font-size: 22px; font-weight: 800; color: var(--text) }
+
+/* ── PM info grid ── */
+.pm { display: grid; grid-template-columns: repeat(3, minmax(140px, 1fr)); gap: 8px; align-items: stretch }
+.pm .k { font-size: 11px; color: var(--text-mute) }
+.pm .v { font-size: 14px; font-weight: 800; color: var(--text) }
+.pm .cell { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 10px }
+
+/* ── Status message ── */
+.msg {
+  margin-top: 10px; min-height: 24px; padding: 8px 12px;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface); color: var(--text-soft);
+  font-size: 12px; text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Worker config grid ── */
+.cfg { overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; min-height: 0 }
+.cfr {
+  display: grid;
+  grid-template-columns: 28px 32px 100px 70px 110px 95px 95px 85px 1fr 52px;
+  gap: 5px; padding: 6px;
+  border-bottom: 1px solid var(--surface-2);
+  align-items: center; text-align: center; min-width: 840px;
+}
+.cfr input, .cfr select { width: 100%; min-width: 0 }
+.head { position: sticky; top: 0; background: var(--surface); font-weight: 700; z-index: 1 }
+input[type='checkbox'] { width: 18px; height: 18px; padding: 0; margin: 0 auto; accent-color: var(--corp-blue); cursor: pointer }
+
+/* ── Role pill ── */
+.role-pill {
+  display: inline-block;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  background: var(--surface);
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+/* ── Viewer (popup overlay) ── */
+.viewer { display: none }
+
+/* ── Doc items ── */
+.doc-item {
+  display: grid;
+  grid-template-columns: 84px 1fr 80px 160px 74px;
+  gap: 8px; padding: 6px 8px;
+  border-bottom: 1px solid var(--surface-2);
+  align-items: center; text-align: center;
+}
+.doc-item:last-child { border-bottom: none }
+
+/* ── Activity column ── */
+.activity {
+  max-width: 260px; margin: 0 auto; padding: 0 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--text-soft); font-size: 12px;
+}
