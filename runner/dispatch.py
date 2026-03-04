@@ -174,8 +174,10 @@ def _build_gemini_command(
     cmd = [cmd_bin]
     if yolo:
         cmd.append("--yolo")
-    # Use -p for non-interactive single-prompt mode
-    cmd.extend(["-p", prompt])
+    # Use Gemini 3.1 Pro model
+    cmd.extend(["-m", "gemini-3.1-pro-preview"])
+    # Use -p with a short instruction; full prompt goes via stdin
+    cmd.extend(["-p", f"Execute the task described in stdin. Working directory: {workspace}"])
     return cmd
 
 
@@ -556,7 +558,7 @@ def main() -> int:
                 prompt=prompt,
                 yolo=True,
             )
-            stdin_text = None  # gemini -p uses command-line prompt
+            stdin_text = prompt  # send full prompt via stdin, -p has short instruction
         elif engine in {"claude", "claude-cli"}:
             command, stdin_text, err = _build_claude_command(prompt=prompt, worker=worker, defaults=defaults)
             if err:

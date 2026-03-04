@@ -1,16 +1,19 @@
-You are executing task {{TASK_ID}} (Owner: {{OWNER}}, Repo: {{REPO}}).
+## ID Consistency Report
+Verified against `dashboard_static/index.html` and `dashboard_static/app.js` on 2026-03-03. No additional mismatches found.
 
-Scope paths (only edit within these):
-{{SCOPE_PATHS}}
+Mismatches found (`app.js` ID reference -> missing in `index.html`):
+- `wcnt` (used via `getVal('#wcnt', ...)`)
+- `copyBtn` (used via `getElementById('copyBtn')` inside popup template script)
+- `txt` (used via `getElementById('txt')` inside popup template script)
 
-YOUR GOAL (implement this NOW, do not wait for further instructions):
-{{GOAL}}
+You are executing task AGENT-T5 (Owner: Codex-C, Repo: orchestrator).
 
-Done when:
-{{DONE_WHEN}}
+## Goal: Verify HTML-JS ID consistency
+
+Read `orchestrator/dashboard_static/index.html` and `orchestrator/dashboard_static/app.js`.
+Check that every element ID referenced in JS (querySelector, getElementById) exists in the HTML.
+
+Report any mismatches at the top of this prompt file (AGENT-T5.md).
 
 Constraints:
-- Only edit within scope paths listed above.
-- Keep edits UTF-8.
-- Do NOT run git reset/rollback/revert.
-- After implementing, run python -m py_compile on changed files to verify.
+- ONLY modify orchestrator/runner/prompts/AGENT-T5.md

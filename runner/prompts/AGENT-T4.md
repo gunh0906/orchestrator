@@ -1,16 +1,10 @@
-You are executing task {{TASK_ID}} (Owner: {{OWNER}}, Repo: {{REPO}}).
+You are executing task AGENT-T4 (Owner: Gemini-Logic, Repo: orchestrator).
 
-Scope paths (only edit within these):
-{{SCOPE_PATHS}}
+## Goal: List all JavaScript functions in app.js
 
-YOUR GOAL (implement this NOW, do not wait for further instructions):
-{{GOAL}}
+Read `orchestrator/dashboard_static/app.js` and list every function name with a one-line description.
 
-Done when:
-{{DONE_WHEN}}
+Write your findings at the top of this prompt file (AGENT-T4.md).
 
 Constraints:
-- Only edit within scope paths listed above.
-- Keep edits UTF-8.
-- Do NOT run git reset/rollback/revert.
-- After implementing, run python -m py_compile on changed files to verify.
+- ONLY modify orchestrator/runner/prompts/AGENT-T4.md

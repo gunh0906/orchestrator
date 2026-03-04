@@ -32,6 +32,7 @@
         <button onclick='stopRun()' class='btn-danger'>Stop</button>
       </div>
     </div>
+    <div class='worker-scene' id='worker-scene'></div>
     <div class='card' style='display:grid;grid-template-rows:auto 1fr;gap:8px;min-height:0'>
       <div style='font-size:14px;font-weight:800'>Worker / Role Planner</div>
       <div class='cfg' id='cfg'></div>
@@ -53,6 +54,13 @@
     </div>
     <div class='card' style='display:grid;grid-template-rows:1fr;min-height:0'>
       <div class='tbl'><table><thead><tr><th>Task</th><th>Owner</th><th>Role</th><th>Engine</th><th>PID</th><th>State</th><th>CPU</th><th>MEM</th><th>Progress</th><th>Tokens</th><th>Activity</th><th>Log</th><th>Docs</th></tr></thead><tbody id='wb'></tbody></table></div>
+    </div>
+    <div class='card live-feed-card'>
+      <div class='live-feed-header'>
+        <span class='live-dot'></span>
+        <span class='live-title'>LIVE ACTIVITY</span>
+      </div>
+      <div class='live-feed' id='live-feed'></div>
     </div>
   </div>
 </div>

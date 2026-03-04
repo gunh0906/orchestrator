@@ -1,16 +1,10 @@
-You are executing task {{TASK_ID}} (Owner: {{OWNER}}, Repo: {{REPO}}).
+You are executing task AGENT-T3 (Owner: Gemini-UI, Repo: orchestrator).
 
-Scope paths (only edit within these):
-{{SCOPE_PATHS}}
+## Goal: Review CSS custom properties
 
-YOUR GOAL (implement this NOW, do not wait for further instructions):
-{{GOAL}}
+Read `orchestrator/dashboard_static/style.css` and list all CSS custom properties defined in :root.
 
-Done when:
-{{DONE_WHEN}}
+Write your findings at the top of this prompt file (AGENT-T3.md).
 
 Constraints:
-- Only edit within scope paths listed above.
-- Keep edits UTF-8.
-- Do NOT run git reset/rollback/revert.
-- After implementing, run python -m py_compile on changed files to verify.
+- ONLY modify orchestrator/runner/prompts/AGENT-T3.md

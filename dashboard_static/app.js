@@ -1,4 +1,207 @@
 let cfg=null,hist={},timer=null,pmState=null,popupTemplateCache=null;
+const prevActivity = {};
+const MAX_FEED_LINES = 30;
+
+const WORKER_ICONS = {
+  'codex': '🤖',
+  'gemini': '💎',
+  'claude-cli': '🧠',
+  'claude': '🧠',
+  'pm': '👔',
+  'manual': '🔧',
+  'default': '⚙️'
+};
+
+/* Character presets - each worker looks different */
+const CHAR_PRESETS = [
+  { hair:'hair-short',   hairColor:'#dc2626', skin:'#f5cba7', shirt:'#1e293b', chair:'#ef4444' }, /* PM - red hair, dark suit */
+  { hair:'hair-spiky',   hairColor:'#1a1a2e', skin:'#f5cba7', shirt:'#2d4b9b', chair:'#3b82f6' },
+  { hair:'hair-long',    hairColor:'#92400e', skin:'#fcd9bd', shirt:'#7c3aed', chair:'#8b5cf6' },
+  { hair:'hair-curly',   hairColor:'#374151', skin:'#deb887', shirt:'#059669', chair:'#10b981' },
+  { hair:'hair-ponytail',hairColor:'#7c2d12', skin:'#fde68a', shirt:'#0369a1', chair:'#0ea5e9' },
+  { hair:'hair-mohawk',  hairColor:'#7c3aed', skin:'#f5cba7', shirt:'#c2410c', chair:'#ea580c' },
+  { hair:'hair-bun',     hairColor:'#1e293b', skin:'#fcd9bd', shirt:'#4338ca', chair:'#6366f1' },
+  { hair:'hair-parted',  hairColor:'#d97706', skin:'#deb887', shirt:'#0f766e', chair:'#14b8a6' },
+];
+
+const BUBBLE_MSGS = {
+  'codex':  ['코딩 중..','building!','fixing..','분석!'],
+  'gemini': ['디자인~','styling!','CSS!','레이아웃!'],
+  'claude': ['리뷰 중..','thinking.','검토!','분석..'],
+  'pm':     ['지시 중!','체크!','진행률..','보고서!'],
+  'default':['작업 중..','working!','처리!','busy!'],
+};
+
+function renderWorkerScene(workers) {
+  const scene = document.querySelector('#worker-scene');
+  if (!scene) return;
+
+  const pmWorker = pmState ? {
+    task_id: `${String(pmState.orch || 'AGENT')}-PM`,
+    engine: 'pm',
+    state: (workers || []).some(w => String(w.state || '').toUpperCase() === 'RUNNING') ? 'RUNNING' : 'IDLE',
+    progress: Number(pmState.progress || 0),
+    _isPm: true,
+  } : null;
+
+  const workerList = (workers || []).map(w => ({
+    task_id: w.task_id || '',
+    engine: w.engine || 'default',
+    state: String(w.state || '').toUpperCase(),
+    progress: Number(w.progress || 0),
+  }));
+
+  if (!pmWorker && !workerList.length) {
+    scene.innerHTML = '<div style="color:var(--text-mute);font-size:11px;padding:20px;text-align:center">No workers</div>';
+    return;
+  }
+
+  function charHtml(w, presetIdx, extraClass) {
+    const preset = CHAR_PRESETS[presetIdx % CHAR_PRESETS.length];
+    const state = w.state;
+    let sc = 'is-idle';
+    if (state === 'RUNNING') sc = 'is-running';
+    else if (state === 'DONE' || state === 'EXITED') sc = 'is-done';
+
+    const name = (w.task_id || '').replace(/^AGENT-/, '');
+    const prog = Math.max(0, Math.min(100, w.progress));
+
+    let bubble = '';
+    if (state === 'RUNNING') {
+      const msgs = BUBBLE_MSGS[w.engine] || BUBBLE_MSGS['default'];
+      bubble = `<div class='char-bubble' style='animation-delay:${presetIdx*0.7}s'>${msgs[Math.floor(Date.now()/4000+presetIdx)%msgs.length]}</div>`;
+    }
+
+    let zzz = (state === 'DONE' || state === 'EXITED') ? `<div class='char-zzz'>z<span>Z</span><span>z</span></div>` : '';
+    const coffee = (state === 'RUNNING') ? `<div class='char-coffee'>☕</div>` : '';
+
+    return `<div class='worker-char ${sc} ${extraClass||''}'>
+      <div class='char-person'>
+        ${bubble}
+        <div class='char-hair ${preset.hair}' style='background:${preset.hairColor}'></div>
+        <div class='char-face' style='background:${preset.skin}'>
+          <div class='char-eyes'></div>
+          <div class='char-mouth'></div>
+        </div>
+        <div class='char-torso' style='background:${preset.shirt}'>
+          <div class='char-arm char-arm-l' style='background:${preset.shirt}'></div>
+          <div class='char-arm char-arm-r' style='background:${preset.shirt}'></div>
+        </div>
+        ${zzz}
+      </div>
+      <div class='char-chair-back' style='background:${preset.chair}'></div>
+      <div class='char-desk'>
+        <div class='char-desk-top'></div>
+        <div class='char-monitor'>
+          <div class='char-screen'>
+            <div class='char-screen-line'></div>
+            <div class='char-screen-line'></div>
+            <div class='char-screen-line'></div>
+          </div>
+        </div>
+        ${coffee}
+      </div>
+      <div class='char-progress'><span style='width:${prog}%'></span></div>
+      <div class='char-label'>${name}</div>
+    </div>`;
+  }
+
+  // Build rows: PM on top center, workers in rows of 3
+  let html = `
+    <div class='office-wall'>
+      <div class='office-board'></div>
+      <div class='office-clock'></div>
+      <div class='office-plant office-plant-l'></div>
+      <div class='office-plant office-plant-r'></div>
+    </div>
+    <div class='desk-rows'>
+  `;
+
+  // PM row
+  if (pmWorker) {
+    html += `<div class='desk-row-pm'>${charHtml(pmWorker, 0, 'is-pm')}</div>`;
+  }
+
+  // Worker rows (3 per row)
+  for (let i = 0; i < workerList.length; i += 3) {
+    const row = workerList.slice(i, i + 3);
+    html += `<div class='desk-row'>`;
+    row.forEach((w, j) => { html += charHtml(w, i + j + 1); });
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  scene.innerHTML = html;
+}
+
+function addFeedLine(taskId, message) {
+  const feed = document.querySelector('#live-feed');
+  if (!feed || !message || message === '-') return;
+
+  const now = new Date();
+  const time = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  const line = document.createElement('div');
+  line.className = 'feed-line recent';
+  line.innerHTML = `<span class='feed-time'>${time}</span><span class='feed-task'>${taskId}</span><span class='feed-msg'>${message}</span>`;
+  setTimeout(() => line.classList.remove('recent'), 3000);
+
+  feed.appendChild(line);
+
+  while (feed.children.length > MAX_FEED_LINES) {
+    feed.removeChild(feed.firstChild);
+  }
+
+  feed.scrollTop = feed.scrollHeight;
+}
+
+const lastLogLines = {};
+const workerStartTimes = {};
+
+async function tailWorkerLogs() {
+  const runEl = document.querySelector('#run');
+  if (!runEl || !runEl.value) return;
+  const run = runEl.value;
+
+  const rows = document.querySelectorAll('#wb tr');
+  for (const row of rows) {
+    const cells = row.querySelectorAll('td');
+    if (cells.length < 6) continue;
+    const taskId = cells[0]?.textContent?.trim();
+    const state = cells[5]?.textContent?.trim()?.toUpperCase();
+    if (!taskId || state !== 'RUNNING') continue;
+
+    try {
+      const d = await fetch(`/api/run/${encodeURIComponent(run)}/log/${encodeURIComponent(taskId)}?tail=3&_ts=${Date.now()}`, {cache:'no-store'});
+      const data = await d.json();
+      if (!data.ok || !data.text) continue;
+
+      const lines = data.text.trim().split('\n').filter(l => l.trim());
+      const lastSeen = lastLogLines[taskId] || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim().substring(0, 120);
+        if (trimmed && trimmed !== lastSeen) {
+          addFeedLine(taskId, trimmed);
+        }
+      }
+      if (lines.length > 0) {
+        lastLogLines[taskId] = lines[lines.length - 1].trim().substring(0, 120);
+      }
+    } catch (e) { /* ignore */ }
+  }
+}
+
+function updateKpiWithAnimation(selector, newText) {
+  const el = document.querySelector(selector);
+  if (!el) return;
+  if (el.textContent !== newText) {
+    el.textContent = newText;
+    el.classList.remove('changed');
+    void el.offsetWidth;
+    el.classList.add('changed');
+  }
+}
 const POPUP_TEMPLATE_URL='/static/popup.html';
 const DEFAULT_MODEL='gpt-5.3-codex';
 const DEFAULT_REASON='xhigh';
@@ -223,9 +426,31 @@ function renderWorkers(arr){
   body.innerHTML=rows.map(w=>{
     const cpu=Number(w.metrics?.cpu_percent||0), mem=Number(w.metrics?.rss_mb||0), prog=Number(w.progress||0);
     const state=String(w.state||'').toUpperCase();
+
+    const actText = String(w.activity || '');
+    if (actText && actText !== '-' && prevActivity[w.task_id] !== actText) {
+      addFeedLine(w.task_id, actText);
+      prevActivity[w.task_id] = actText;
+    }
+
     const stClass = (state==='RUNNING' || state==='DONE') ? 'ok' : ((state==='EXITED' || state==='BLOCKED') ? 'warn' : 'bad');
     const stBg = (state==='RUNNING'||state==='DONE') ? 'background:#ecfdf5' : ((state==='EXITED'||state==='BLOCKED') ? 'background:#fefce8' : (state==='ERROR'?'background:#fef2f2':''));
     const stHint = w.state_hint ? `<div style='font-size:11px;color:var(--text-mute)'>${esc(w.state_hint)}</div>` : '';
+    
+    let stateDisplay = esc(state || '-');
+    if (state === 'RUNNING') {
+      if (!workerStartTimes[w.task_id]) {
+        workerStartTimes[w.task_id] = Date.now();
+      }
+      const elapsed = Math.floor((Date.now() - workerStartTimes[w.task_id]) / 1000);
+      const min = Math.floor(elapsed / 60);
+      const sec = elapsed % 60;
+      const elapsedStr = min > 0 ? `${min}m ${sec}s` : `${sec}s`;
+      stateDisplay = `<span class='state-pulse'></span>${esc(state)} <span class='elapsed'>${elapsedStr}</span>`;
+    } else {
+      delete workerStartTimes[w.task_id];
+    }
+
     const cpuCell = `${bar('cpu',cpu)}<div>${cpu.toFixed(1)}%</div>`;
     const memCell = `${bar('mem',Math.min(100,mem/20))}<div>${mem.toFixed(1)}MB</div>`;
     const tokTotal = w.tokens && w.tokens.total != null ? Number(w.tokens.total) : null;
@@ -236,8 +461,13 @@ function renderWorkers(arr){
     const docsBtn = w._pm
       ? `<button onclick='viewPmDocs()'>1</button>`
       : `<button onclick='viewDocs("${esc(w.task_id)}")'>${Number(w.docs_count||0)}</button>`;
-    return `<tr><td>${esc(w.task_id)}</td><td>${esc(w.owner)}</td><td>${esc(w.role)}</td><td>${esc(w.engine)}</td><td>${w.pid??''}</td><td class='${stClass}' style='${stBg}'>${esc(state || '-')}</td><td>${cpuCell}</td><td>${memCell}</td><td>${bar('prog',prog)}<div style='font-size:14px;font-weight:700'>${prog.toFixed(1)}%</div></td><td>${tokenCell}</td><td><div class='activity' title='${esc(w.activity||'')}'>${esc(w.activity||'-')}</div></td><td>${logBtn}${stHint}</td><td>${docsBtn}</td></tr>`;
+    
+    const progBar = (state === 'RUNNING') ? bar('prog running-shimmer', prog) : bar('prog', prog);
+    const actClass = (state === 'RUNNING') ? 'activity is-active' : 'activity';
+
+    return `<tr><td>${esc(w.task_id)}</td><td>${esc(w.owner)}</td><td>${esc(w.role)}</td><td>${esc(w.engine)}</td><td>${w.pid??''}</td><td class='${stClass}' style='${stBg}'>${stateDisplay}</td><td>${cpuCell}</td><td>${memCell}</td><td>${progBar}<div style='font-size:14px;font-weight:700'>${prog.toFixed(1)}%</div></td><td>${tokenCell}</td><td><div class='${actClass}' title='${esc(w.activity||'')}'>${esc(w.activity||'-')}</div></td><td>${logBtn}${stHint}</td><td>${docsBtn}</td></tr>`;
   }).join('');
+  renderWorkerScene(arr);
 }
 function renderManual(arr){}
 
@@ -248,9 +478,9 @@ async function loadRun(){
   const d=await api(`/api/run/${encodeURIComponent(run)}/status`);
   if(!d.ok){setLogText(`status failed: ${d.error||''}`);return;}
   const s=d.summary||{};
-  setText('#m1',String(s.running||0));
-  setText('#m2',String(s.total||0));
-  setText('#m5',formatTokens(s.tokens_total||0));
+  updateKpiWithAnimation('#m1',String(s.running||0));
+  updateKpiWithAnimation('#m2',String(s.total||0));
+  updateKpiWithAnimation('#m5',formatTokens(s.tokens_total||0));
   renderWorkers(d.workers||[]);
 }
 
@@ -329,7 +559,8 @@ async function refreshAll(){
   await Promise.all(jobs.map(p => p.catch(()=>{})));
   if(!cfg) await loadCfg();
   await loadRun();
+  tailWorkerLogs().catch(()=>{});
 }
 
 window.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeViewer();});
-window.addEventListener('load',async()=>{await refreshAll();setAuto();});
+window.addEventListener('load',async()=>{addFeedLine('SYSTEM', 'Dashboard connected. Monitoring workers...');await refreshAll();setAuto();});
