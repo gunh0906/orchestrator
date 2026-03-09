@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pixel Office Test</title>
+<style>
+  body { margin:0; background:#1a1a2a; display:flex; justify-content:center; align-items:center; height:100vh; }
+  canvas { border:1px solid #333; }
+</style>
+</head>
+<body>
+<canvas id="scene" width="950" height="600"></canvas>
+<script src="pixel_office.js"></script>
+<script>
+const TEAM_ROSTER = [
+  { name:'Architect',  engine:'opus',   ver:'4.6', skin:'#f0c8a0', shirt:'#4a6fa5', hair:'hair-parted',  hairColor:'#3a2820', badge:'#cc3322', chair:'#4466aa' },
+  { name:'UI/Design',  engine:'sonnet', ver:'4.6', skin:'#e8c098', shirt:'#7a5a8a', hair:'hair-long',    hairColor:'#1a1018', badge:'#dd8833', chair:'#8855aa' },
+  { name:'Frontend',   engine:'codex',  ver:'5.4', skin:'#f0d0a8', shirt:'#5a8a6a', hair:'hair-spiky',   hairColor:'#5a3010', badge:'#22aa44', chair:'#559966' },
+  { name:'Backend',    engine:'opus',   ver:'4.6', skin:'#d8a878', shirt:'#8a5a4a', hair:'hair-ponytail',hairColor:'#2a1a10', badge:'#3366cc', chair:'#886644' },
+  { name:'API/Data',   engine:'gemini', ver:'3.1', skin:'#f0c8a0', shirt:'#5a7a9a', hair:'hair-curly',   hairColor:'#4a3828', badge:'#aa44cc', chair:'#557799' },
+  { name:'Runtime',    engine:'sonnet', ver:'4.6', skin:'#e0b890', shirt:'#9a6a5a', hair:'hair-mohawk',  hairColor:'#cc4422', badge:'#cc8822', chair:'#996655' },
+  { name:'Infra',      engine:'codex',  ver:'5.4', skin:'#f0d0b0', shirt:'#6a8a7a', hair:'hair-bun',     hairColor:'#1a1820', badge:'#4488aa', chair:'#668877' },
+  { name:'QA/Test',    engine:'gemini', ver:'3.1', skin:'#e8c0a0', shirt:'#7a7a5a', hair:'hair-parted',  hairColor:'#8a6a40', badge:'#88aa22', chair:'#777755' },
+];
+
+const assigned = [
+  { state:'RUNNING', progress:65 },
+  { state:'RUNNING', progress:30 },
+  { state:'DONE',    progress:100 },
+  { state:'RUNNING', progress:80 },
+  { state:'IDLE',    progress:0 },
+  { state:'RUNNING', progress:45 },
+  { state:'DONE',    progress:100 },
+  { state:'RUNNING', progress:15 },
+];
+
+const BUBBLE_MSGS = {
+  default: ['reviewing code...','writing tests...','fixing bugs...','refactoring...','analyzing...']
+};
+
+const canvas = document.getElementById('scene');
+function loop() {
+  TAVERN.render(canvas, TEAM_ROSTER, assigned, BUBBLE_MSGS);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

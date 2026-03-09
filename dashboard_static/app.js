@@ -1,157 +1,142 @@
-let cfg=null,hist={},timer=null,pmState=null,popupTemplateCache=null;
+let cfg=null,timer=null,pmState=null,popupTemplateCache=null;
 const prevActivity = {};
-const MAX_FEED_LINES = 30;
+const prevStates = {};
+const MAX_FEED_LINES = 50;
+let notificationsEnabled = false;
 
-const WORKER_ICONS = {
-  'codex': '🤖',
-  'gemini': '💎',
-  'claude-cli': '🧠',
-  'claude': '🧠',
-  'pm': '👔',
-  'manual': '🔧',
-  'default': '⚙️'
-};
-
-/* Character presets - each worker looks different */
-const CHAR_PRESETS = [
-  { hair:'hair-short',   hairColor:'#dc2626', skin:'#f5cba7', shirt:'#1e293b', chair:'#ef4444' }, /* PM - red hair, dark suit */
-  { hair:'hair-spiky',   hairColor:'#1a1a2e', skin:'#f5cba7', shirt:'#2d4b9b', chair:'#3b82f6' },
-  { hair:'hair-long',    hairColor:'#92400e', skin:'#fcd9bd', shirt:'#7c3aed', chair:'#8b5cf6' },
-  { hair:'hair-curly',   hairColor:'#374151', skin:'#deb887', shirt:'#059669', chair:'#10b981' },
-  { hair:'hair-ponytail',hairColor:'#7c2d12', skin:'#fde68a', shirt:'#0369a1', chair:'#0ea5e9' },
-  { hair:'hair-mohawk',  hairColor:'#7c3aed', skin:'#f5cba7', shirt:'#c2410c', chair:'#ea580c' },
-  { hair:'hair-bun',     hairColor:'#1e293b', skin:'#fcd9bd', shirt:'#4338ca', chair:'#6366f1' },
-  { hair:'hair-parted',  hairColor:'#d97706', skin:'#deb887', shirt:'#0f766e', chair:'#14b8a6' },
+/* ── 8-member team roster ── */
+const TEAM_ROSTER = [
+  { id:'OPUS-1',   engine:'opus',   ver:'4.6', role:'Architect',       hair:'hair-parted',  hairColor:'#374151', skin:'#fcd9bd', shirt:'#2d2d3d', chair:'#b91c1c', badge:'#dc2626' },
+  { id:'SONNET-1', engine:'sonnet', ver:'4.6', role:'UI / Design',     hair:'hair-long',    hairColor:'#92400e', skin:'#fde68a', shirt:'#7c3aed', chair:'#8b5cf6', badge:'#7c3aed' },
+  { id:'SONNET-2', engine:'sonnet', ver:'4.6', role:'Frontend',        hair:'hair-ponytail',hairColor:'#7c2d12', skin:'#fcd9bd', shirt:'#6d28d9', chair:'#a78bfa', badge:'#7c3aed' },
+  { id:'CODEX-1',  engine:'codex',  ver:'5.3', role:'Backend',         hair:'hair-spiky',   hairColor:'#1a1a2e', skin:'#f5cba7', shirt:'#2d4b9b', chair:'#3b82f6', badge:'#2d4b9b' },
+  { id:'CODEX-2',  engine:'codex',  ver:'5.3', role:'API / Data',      hair:'hair-curly',   hairColor:'#374151', skin:'#deb887', shirt:'#1e40af', chair:'#60a5fa', badge:'#2d4b9b' },
+  { id:'CODEX-3',  engine:'codex',  ver:'5.3', role:'Runtime',         hair:'hair-mohawk',  hairColor:'#1e293b', skin:'#f5cba7', shirt:'#1d4ed8', chair:'#93c5fd', badge:'#2d4b9b' },
+  { id:'CODEX-4',  engine:'codex',  ver:'5.3', role:'Infra / DevOps',  hair:'hair-bun',     hairColor:'#0f172a', skin:'#fcd9bd', shirt:'#2563eb', chair:'#3b82f6', badge:'#2d4b9b' },
+  { id:'GEMINI-1', engine:'gemini', ver:'3.1', role:'QA / Test',       hair:'hair-short',   hairColor:'#d97706', skin:'#deb887', shirt:'#059669', chair:'#10b981', badge:'#059669' },
 ];
 
 const BUBBLE_MSGS = {
+  'opus':   ['지시 중!','리뷰!','아키텍처..','설계!'],
+  'sonnet': ['디자인~','styling!','레이아웃!','UI!'],
   'codex':  ['코딩 중..','building!','fixing..','분석!'],
-  'gemini': ['디자인~','styling!','CSS!','레이아웃!'],
+  'gemini': ['테스트~','검증!','QA!','체크!'],
   'claude': ['리뷰 중..','thinking.','검토!','분석..'],
   'pm':     ['지시 중!','체크!','진행률..','보고서!'],
   'default':['작업 중..','working!','처리!','busy!'],
 };
 
-function renderWorkerScene(workers) {
-  const scene = document.querySelector('#worker-scene');
-  if (!scene) return;
-
-  const pmWorker = pmState ? {
-    task_id: `${String(pmState.orch || 'AGENT')}-PM`,
-    engine: 'pm',
-    state: (workers || []).some(w => String(w.state || '').toUpperCase() === 'RUNNING') ? 'RUNNING' : 'IDLE',
-    progress: Number(pmState.progress || 0),
-    _isPm: true,
-  } : null;
-
-  const workerList = (workers || []).map(w => ({
-    task_id: w.task_id || '',
-    engine: w.engine || 'default',
-    state: String(w.state || '').toUpperCase(),
-    progress: Number(w.progress || 0),
-  }));
-
-  if (!pmWorker && !workerList.length) {
-    scene.innerHTML = '<div style="color:var(--text-mute);font-size:11px;padding:20px;text-align:center">No workers</div>';
-    return;
+// ── Notifications ──
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(p => { notificationsEnabled = (p === 'granted'); });
+  } else {
+    notificationsEnabled = (Notification.permission === 'granted');
   }
-
-  function charHtml(w, presetIdx, extraClass) {
-    const preset = CHAR_PRESETS[presetIdx % CHAR_PRESETS.length];
-    const state = w.state;
-    let sc = 'is-idle';
-    if (state === 'RUNNING') sc = 'is-running';
-    else if (state === 'DONE' || state === 'EXITED') sc = 'is-done';
-
-    const name = (w.task_id || '').replace(/^AGENT-/, '');
-    const prog = Math.max(0, Math.min(100, w.progress));
-
-    let bubble = '';
-    if (state === 'RUNNING') {
-      const msgs = BUBBLE_MSGS[w.engine] || BUBBLE_MSGS['default'];
-      bubble = `<div class='char-bubble' style='animation-delay:${presetIdx*0.7}s'>${msgs[Math.floor(Date.now()/4000+presetIdx)%msgs.length]}</div>`;
-    }
-
-    let zzz = (state === 'DONE' || state === 'EXITED') ? `<div class='char-zzz'>z<span>Z</span><span>z</span></div>` : '';
-    const coffee = (state === 'RUNNING') ? `<div class='char-coffee'>☕</div>` : '';
-
-    return `<div class='worker-char ${sc} ${extraClass||''}'>
-      <div class='char-person'>
-        ${bubble}
-        <div class='char-hair ${preset.hair}' style='background:${preset.hairColor}'></div>
-        <div class='char-face' style='background:${preset.skin}'>
-          <div class='char-eyes'></div>
-          <div class='char-mouth'></div>
-        </div>
-        <div class='char-torso' style='background:${preset.shirt}'>
-          <div class='char-arm char-arm-l' style='background:${preset.shirt}'></div>
-          <div class='char-arm char-arm-r' style='background:${preset.shirt}'></div>
-        </div>
-        ${zzz}
-      </div>
-      <div class='char-chair-back' style='background:${preset.chair}'></div>
-      <div class='char-desk'>
-        <div class='char-desk-top'></div>
-        <div class='char-monitor'>
-          <div class='char-screen'>
-            <div class='char-screen-line'></div>
-            <div class='char-screen-line'></div>
-            <div class='char-screen-line'></div>
-          </div>
-        </div>
-        ${coffee}
-      </div>
-      <div class='char-progress'><span style='width:${prog}%'></span></div>
-      <div class='char-label'>${name}</div>
-    </div>`;
-  }
-
-  // Build rows: PM on top center, workers in rows of 3
-  let html = `
-    <div class='office-wall'>
-      <div class='office-board'></div>
-      <div class='office-clock'></div>
-      <div class='office-plant office-plant-l'></div>
-      <div class='office-plant office-plant-r'></div>
-    </div>
-    <div class='desk-rows'>
-  `;
-
-  // PM row
-  if (pmWorker) {
-    html += `<div class='desk-row-pm'>${charHtml(pmWorker, 0, 'is-pm')}</div>`;
-  }
-
-  // Worker rows (3 per row)
-  for (let i = 0; i < workerList.length; i += 3) {
-    const row = workerList.slice(i, i + 3);
-    html += `<div class='desk-row'>`;
-    row.forEach((w, j) => { html += charHtml(w, i + j + 1); });
-    html += `</div>`;
-  }
-
-  html += `</div>`;
-  scene.innerHTML = html;
+}
+function notifyStateChange(taskId, oldState, newState) {
+  if (!notificationsEnabled || !oldState || oldState === newState) return;
+  const icon = newState === 'DONE' ? '✅' : newState === 'FAILED' ? '❌' : newState === 'BLOCKED' ? '⚠️' : '🔄';
+  try { new Notification(`${icon} ${taskId}`, { body: `${oldState} → ${newState}`, tag: `w-${taskId}` }); } catch(e) {}
 }
 
-function addFeedLine(taskId, message) {
-  const feed = document.querySelector('#live-feed');
-  if (!feed || !message || message === '-') return;
+// ── Individual worker stop ──
+async function stopWorker(taskId, pid) {
+  if (!confirm(`${taskId} (PID ${pid}) 를 중지하시겠습니까?`)) return;
+  const d = await api('/api/stop-worker', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({task_id:taskId,pid}) });
+  setLogText(d.ok ? d.message : `stop failed: ${d.error||''}`);
+  await loadRun();
+}
 
-  const now = new Date();
-  const time = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+// ── Token cost estimation ──
+const TOKEN_COSTS = {
+  'codex':  { input:2.0, output:8.0 },
+  'opus':   { input:15.0, output:75.0 },
+  'sonnet': { input:3.0, output:15.0 },
+  'gemini': { input:1.25, output:5.0 },
+  'default':{ input:2.0, output:8.0 },
+};
+function estimateCost(engine, tokens) {
+  const r = TOKEN_COSTS[engine] || TOKEN_COSTS['default'];
+  const inp = Number(tokens?.input||0), out = Number(tokens?.output||0), tot = Number(tokens?.total||0);
+  if (inp > 0 && out > 0) return inp/1e6*r.input + out/1e6*r.output;
+  if (tot > 0) return tot*0.7/1e6*r.input + tot*0.3/1e6*r.output;
+  return 0;
+}
 
-  const line = document.createElement('div');
-  line.className = 'feed-line recent';
-  line.innerHTML = `<span class='feed-time'>${time}</span><span class='feed-task'>${taskId}</span><span class='feed-msg'>${message}</span>`;
-  setTimeout(() => line.classList.remove('recent'), 3000);
+// ── Config panel toggle ──
+function toggleCfg() {
+  const body = document.getElementById('cfgBody');
+  const icon = document.getElementById('cfgToggle');
+  body.classList.toggle('collapsed');
+  icon.classList.toggle('collapsed');
+}
 
-  feed.appendChild(line);
+// ── Canvas scene ──
+let _sceneCanvas = null, _sceneAnimTimer = null;
 
-  while (feed.children.length > MAX_FEED_LINES) {
-    feed.removeChild(feed.firstChild);
+function renderWorkerScene(workers) {
+  const scene = document.getElementById('worker-scene');
+  if (!scene) return;
+  if (!_sceneCanvas) {
+    _sceneCanvas = document.createElement('canvas');
+    _sceneCanvas.style.cssText = 'width:100%;height:100%;display:block';
+    scene.innerHTML = '';
+    scene.appendChild(_sceneCanvas);
   }
+  const rect = scene.getBoundingClientRect();
+  const dpr = devicePixelRatio || 1;
+  _sceneCanvas.width = Math.round(rect.width * dpr);
+  _sceneCanvas.height = Math.round(rect.height * dpr);
+  _sceneCanvas.style.width = rect.width + 'px';
+  _sceneCanvas.style.height = rect.height + 'px';
+  _sceneCanvas.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
 
+  const workerList = (workers||[]).map(w => ({
+    task_id: w.task_id||'', engine: String(w.engine||'default').toLowerCase(),
+    state: String(w.state||'').toUpperCase(), progress: Number(w.progress||0),
+  }));
+  const engineMap = {'claude-cli':'opus','claude':'sonnet','claude-manual':'sonnet'};
+  const norm = e => engineMap[e]||e;
+  const assigned = new Array(TEAM_ROSTER.length).fill(null);
+  const used = new Set();
+  for (const w of workerList) {
+    const eng = norm(w.engine);
+    for (let i = 0; i < TEAM_ROSTER.length; i++) {
+      if (!assigned[i] && TEAM_ROSTER[i].engine === eng && !used.has(i)) { assigned[i]=w; used.add(i); break; }
+    }
+  }
+  if (pmState) {
+    const pi = TEAM_ROSTER.findIndex(r => r.engine==='opus');
+    if (pi >= 0 && !assigned[pi]) {
+      assigned[pi] = { task_id:`${pmState.orch||'AGENT'}-PM`, engine:'opus',
+        state: workerList.some(w=>w.state==='RUNNING')?'RUNNING':'IDLE', progress:Number(pmState.progress||0) };
+    }
+  }
+  _sceneCanvas._roster = TEAM_ROSTER;
+  _sceneCanvas._assigned = assigned;
+  TAVERN.render(_sceneCanvas, TEAM_ROSTER, assigned, BUBBLE_MSGS);
+  if (!_sceneAnimTimer) {
+    _sceneAnimTimer = setInterval(() => {
+      if (_sceneCanvas?._roster) TAVERN.render(_sceneCanvas, _sceneCanvas._roster, _sceneCanvas._assigned, BUBBLE_MSGS);
+    }, 166);
+  }
+}
+
+// ── Feed ──
+function addFeedLine(taskId, message) {
+  const feed = document.getElementById('live-feed');
+  if (!feed || !message || message === '-') return;
+  const time = new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const low = message.toLowerCase();
+  const cls = low.includes('error')||low.includes('fail')||low.includes('traceback') ? ' feed-error'
+    : low.includes('done')||low.includes('completed')||low.includes('success') ? ' feed-success' : '';
+  const el = document.createElement('div');
+  el.className = `feed-line recent${cls}`;
+  el.innerHTML = `<span class='feed-time'>${time}</span><span class='feed-task'>${taskId}</span><span class='feed-msg'>${message}</span>`;
+  setTimeout(() => el.classList.remove('recent'), 3000);
+  feed.appendChild(el);
+  while (feed.children.length > MAX_FEED_LINES) feed.removeChild(feed.firstChild);
   feed.scrollTop = feed.scrollHeight;
 }
 
@@ -159,408 +144,398 @@ const lastLogLines = {};
 const workerStartTimes = {};
 
 async function tailWorkerLogs() {
-  const runEl = document.querySelector('#run');
-  if (!runEl || !runEl.value) return;
+  const runEl = document.getElementById('run');
+  if (!runEl?.value) return;
   const run = runEl.value;
-
-  const rows = document.querySelectorAll('#wb tr');
-  for (const row of rows) {
-    const cells = row.querySelectorAll('td');
-    if (cells.length < 6) continue;
-    const taskId = cells[0]?.textContent?.trim();
-    const state = cells[5]?.textContent?.trim()?.toUpperCase();
-    if (!taskId || state !== 'RUNNING') continue;
-
+  for (const row of document.querySelectorAll('#wb tr[data-task][data-running]')) {
+    const taskId = row.dataset.task;
     try {
-      const d = await fetch(`/api/run/${encodeURIComponent(run)}/log/${encodeURIComponent(taskId)}?tail=3&_ts=${Date.now()}`, {cache:'no-store'});
-      const data = await d.json();
-      if (!data.ok || !data.text) continue;
-
-      const lines = data.text.trim().split('\n').filter(l => l.trim());
-      const lastSeen = lastLogLines[taskId] || '';
-
+      const d = await (await fetch(`/api/run/${encodeURIComponent(run)}/log/${encodeURIComponent(taskId)}?tail=3&_ts=${Date.now()}`,{cache:'no-store'})).json();
+      if (!d.ok || !d.text) continue;
+      const lines = d.text.trim().split('\n').filter(l=>l.trim());
+      const lastSeen = lastLogLines[taskId]||'';
       for (const line of lines) {
-        const trimmed = line.trim().substring(0, 120);
-        if (trimmed && trimmed !== lastSeen) {
-          addFeedLine(taskId, trimmed);
-        }
+        const t = line.trim().substring(0,120);
+        if (t && t !== lastSeen) addFeedLine(taskId, t);
       }
-      if (lines.length > 0) {
-        lastLogLines[taskId] = lines[lines.length - 1].trim().substring(0, 120);
-      }
-    } catch (e) { /* ignore */ }
+      if (lines.length) lastLogLines[taskId] = lines[lines.length-1].trim().substring(0,120);
+    } catch(e) {}
   }
 }
 
-function updateKpiWithAnimation(selector, newText) {
-  const el = document.querySelector(selector);
+// ── Helpers ──
+function updateKpi(sel, txt) {
+  const el = document.querySelector(sel);
   if (!el) return;
-  if (el.textContent !== newText) {
-    el.textContent = newText;
-    el.classList.remove('changed');
-    void el.offsetWidth;
-    el.classList.add('changed');
+  if (el.textContent !== txt) { el.textContent = txt; el.classList.remove('changed'); void el.offsetWidth; el.classList.add('changed'); }
+}
+const q = s => { try { return document.querySelector(s) } catch(e) { return null } };
+const qa = s => { try { return [...document.querySelectorAll(s)] } catch(e) { return [] } };
+const setText = (s,t) => { const el=q(s); if(el) el.textContent=String(t??'') };
+const setVal = (s,v) => { const el=q(s); if(el) el.value=String(v??'') };
+const getVal = (s,d='') => { const el=q(s); return el?el.value:d };
+const esc = v => String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+const bar = (cls,val) => { const v=Math.max(0,Math.min(100,Number(val)||0)); return `<div class='bar ${cls}'><span style='width:${v}%'></span></div>` };
+function formatTokens(n) {
+  if (n==null) return '-';
+  const v=Number(n);
+  return v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':v.toLocaleString();
+}
+async function api(u,o={}) {
+  const url = `${u}${u.includes('?')?'&':'?'}_ts=${Date.now()}`;
+  return await (await fetch(url, Object.assign({cache:'no-store'},o))).json();
+}
+function setLogText(t) { const el=q('#msg'); if(el) el.textContent=String(t||'') }
+function _htmlSafe(v) { return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }
+
+// ── Popup viewer ──
+const POPUP_TEMPLATE_URL='/static/popup.html';
+const POPUP_FALLBACK=`<!doctype html><html><head><meta charset="utf-8"><title>__TITLE__</title><style>body{margin:0;font-family:system-ui;background:#f1f5f9;color:#0f172a}.top{height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:#fff;border-bottom:1px solid #e2e8f0}.top div:first-child{font-weight:700;font-size:13px}.btn{height:28px;border:none;border-radius:6px;padding:0 12px;background:#2d4b9b;color:#fff;font-weight:600;cursor:pointer}#txt{width:100%;height:calc(100vh - 40px);border:0;outline:none;padding:12px;font-family:Consolas,monospace;font-size:12px;background:#fff;color:#0f172a;white-space:pre;resize:none}</style></head><body><div class="top"><div>__TITLE__</div><div><button class="btn" id="cb">Copy</button></div></div><textarea id="txt" readonly>__TEXT__</textarea><script>document.getElementById('cb').onclick=async()=>{const v=document.getElementById('txt').value;try{await navigator.clipboard.writeText(v)}catch(e){document.getElementById('txt').select();document.execCommand('copy')}}</script></body></html>`;
+function openViewer(title, text) {
+  const win = window.open('','_blank','width=1000,height=700,resizable=yes,scrollbars=yes');
+  if (!win) { setLogText('Popup blocked'); return }
+  const st = _htmlSafe(title||'View'), sx = _htmlSafe(text||'');
+  const write = tpl => { const h=(tpl||POPUP_FALLBACK).replaceAll('__TITLE__',st).replaceAll('__TEXT__',sx); win.document.open(); win.document.write(h); win.document.close() };
+  if (popupTemplateCache!==null) { write(popupTemplateCache); return }
+  fetch(`${POPUP_TEMPLATE_URL}?_ts=${Date.now()}`,{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject()).then(t=>{popupTemplateCache=t;write(t)}).catch(()=>{popupTemplateCache='';write('')});
+}
+
+// ── Settings modal ──
+function openSettings() {
+  ensureCfg();
+  const d = cfg.defaults || {};
+  setVal('#setWorkspace', cfg.workspace || 'd:\\Development');
+  // General
+  setVal('#setReasoning', d.reasoning_effort || 'xhigh');
+  setVal('#setGlobalPrompt', d.global_prompt || '');
+  setVal('#setReadOnly', d.read_only_guard !== false ? 'true' : 'false');
+  // Claude
+  setVal('#setClaudeModel', d.claude_model || 'claude-opus-4-6');
+  setVal('#setClaudeCmd', d.claude_cmd || 'claude');
+  setVal('#setClaudeArgs', Array.isArray(d.claude_args) ? d.claude_args.join(' ') : '--print');
+  setVal('#setClaudePermission', d.claude_permission_mode || 'bypassPermissions');
+  const cb = (sel, val) => { const el = q(sel); if (el) el.checked = !!val };
+  cb('#setStdin', d.claude_stdin);
+  cb('#setAutoApprove', d.claude_auto_approve !== false);
+  cb('#setContinue', d.claude_continue);
+  // Codex
+  setVal('#setCodexModel', d.model || 'gpt-5.3-codex');
+  setVal('#setSandbox', d.sandbox || 'danger-full-access');
+  setVal('#setApproval', d.approval || 'never');
+  cb('#setBypass', d.codex_dangerously_bypass);
+  // Gemini
+  setVal('#setGeminiModel', d.gemini_model || 'gemini-3.1-pro');
+  setVal('#setGeminiCmd', d.gemini_cmd || 'gemini');
+  // close dir browser
+  q('#dirBrowser')?.classList.remove('open');
+  q('#settingsOverlay')?.classList.add('open');
+}
+function closeSettings(e) {
+  if (e && e.target && e.target !== q('#settingsOverlay')) return;
+  q('#settingsOverlay')?.classList.remove('open');
+}
+async function saveSettings() {
+  ensureCfg();
+  if (!cfg.defaults) cfg.defaults = {};
+  cfg.workspace = getVal('#setWorkspace', cfg.workspace || 'd:\\Development');
+  // General
+  cfg.defaults.reasoning_effort = getVal('#setReasoning', 'xhigh');
+  cfg.defaults.global_prompt = getVal('#setGlobalPrompt', '');
+  cfg.defaults.read_only_guard = getVal('#setReadOnly') === 'true';
+  cfg.defaults.history_readonly_guard = cfg.defaults.read_only_guard;
+  // Claude
+  cfg.defaults.claude_model = getVal('#setClaudeModel', 'claude-opus-4-6');
+  cfg.defaults.claude_cmd = getVal('#setClaudeCmd', 'claude');
+  const argsStr = getVal('#setClaudeArgs', '--print');
+  cfg.defaults.claude_args = argsStr.split(/\s+/).filter(Boolean);
+  cfg.defaults.claude_permission_mode = getVal('#setClaudePermission', 'bypassPermissions');
+  cfg.defaults.claude_stdin = q('#setStdin')?.checked || false;
+  cfg.defaults.claude_auto_approve = q('#setAutoApprove')?.checked !== false;
+  cfg.defaults.claude_continue = q('#setContinue')?.checked || false;
+  // Codex
+  cfg.defaults.model = getVal('#setCodexModel', 'gpt-5.3-codex');
+  cfg.defaults.sandbox = getVal('#setSandbox', 'danger-full-access');
+  cfg.defaults.approval = getVal('#setApproval', 'never');
+  cfg.defaults.codex_dangerously_bypass = q('#setBypass')?.checked || false;
+  // Gemini
+  cfg.defaults.gemini_model = getVal('#setGeminiModel', 'gemini-2.5-pro');
+  cfg.defaults.gemini_cmd = getVal('#setGeminiCmd', 'gemini');
+  const ok = await saveCfg(false);
+  if (ok) closeSettings();
+}
+
+// ── Directory browser ──
+async function openDirBrowser() {
+  const browser = q('#dirBrowser');
+  if (!browser) return;
+  if (browser.classList.contains('open')) { browser.classList.remove('open'); return }
+  browser.classList.add('open');
+  const cur = getVal('#setWorkspace') || 'd:\\Development';
+  await browseTo(cur);
+}
+async function browseTo(dirPath) {
+  const list = q('#dirList');
+  const bread = q('#dirBreadcrumb');
+  if (!list || !bread) return;
+  list.innerHTML = '<div class="dir-item" style="color:var(--text-mute)">Loading...</div>';
+  try {
+    const d = await api(`/api/list-dirs?path=${encodeURIComponent(dirPath)}`);
+    if (!d.ok) { list.innerHTML = `<div class="dir-item" style="color:var(--danger)">${d.error||'error'}</div>`; return }
+    // breadcrumb
+    const parts = d.current.replace(/\\/g,'/').split('/').filter(Boolean);
+    let crumb = '';
+    const crumbs = [];
+    if (d.drives?.length) {
+      crumbs.push(`<span onclick="browseTo('${d.drives[0]}')" title="Drives">${parts[0]||'/'}</span>`);
+    } else {
+      crumbs.push(`<span onclick="browseTo('/')">/</span>`);
+    }
+    for (let i = 0; i < parts.length; i++) {
+      crumb += parts[i] + '/';
+      if (i > 0 || !d.drives?.length) {
+        crumbs.push(`<span class="sep">/</span><span onclick="browseTo('${crumb.replace(/'/g,"\\'")}')">${parts[i]}</span>`);
+      }
+    }
+    // select current button
+    crumbs.push(`<span class="sep" style="margin-left:auto"></span><span onclick="selectDir('${d.current.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}',true)" style="color:var(--ok);font-weight:800" title="Select this folder">&#10003; Select</span>`);
+    bread.innerHTML = crumbs.join('');
+    // directory listing
+    let html = '';
+    if (d.parent) {
+      html += `<div class="dir-item" onclick="browseTo('${d.parent.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"><span class="dir-icon">&#128194;</span> ..</div>`;
+    }
+    if (d.drives?.length > 1) {
+      for (const drv of d.drives) {
+        html += `<div class="dir-item" onclick="browseTo('${drv.replace(/'/g,"\\'")}')"><span class="dir-icon">&#128187;</span> ${drv}</div>`;
+      }
+    }
+    for (const dir of d.dirs) {
+      const p = dir.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      html += `<div class="dir-item" ondblclick="browseTo('${p}')" onclick="selectDir('${p}')"><span class="dir-icon">&#128193;</span> ${dir.name}</div>`;
+    }
+    if (!d.dirs.length && !d.drives?.length) html += '<div class="dir-item" style="color:var(--text-mute)">(empty)</div>';
+    list.innerHTML = html;
+  } catch(e) {
+    list.innerHTML = `<div class="dir-item" style="color:var(--danger)">Failed to load</div>`;
   }
 }
-const POPUP_TEMPLATE_URL='/static/popup.html';
+function selectDir(dirPath, close) {
+  setVal('#setWorkspace', dirPath.replace(/\\\\/g,'\\'));
+  // highlight selected
+  qa('.dir-item').forEach(el => el.classList.remove('dir-select'));
+  if (close) q('#dirBrowser')?.classList.remove('open');
+}
+
+// ── Config ──
 const DEFAULT_MODEL='gpt-5.3-codex';
 const DEFAULT_REASON='xhigh';
-const POPUP_TEMPLATE_FALLBACK=`<!doctype html><html><head><meta charset="utf-8"><title>__TITLE__</title>
-<style>body{margin:0;font-family:'Segoe UI','Noto Sans KR',sans-serif;background:#f1f5f9;color:#0f172a}
-.top{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);border-bottom:1px solid #e2e8f0;color:#0f172a}
-.top div:first-child{font-weight:700;font-size:14px}
-.btn{height:32px;border:none;border-radius:8px;padding:0 14px;background:#2d4b9b;color:#fff;font-weight:600;cursor:pointer}
-.btn:hover{filter:brightness(1.1)}
-#txt{width:100%;height:calc(100vh - 48px);box-sizing:border-box;border:0;outline:none;padding:16px;font-family:Consolas,'Courier New',monospace;font-size:12.5px;background:#ffffff;color:#0f172a;white-space:pre;resize:none}</style>
-</head><body><div class="top"><div>__TITLE__</div><div><button class="btn" id="copyBtn">Copy</button></div></div>
-<textarea id="txt" readonly>__TEXT__</textarea>
-<script>document.getElementById('copyBtn').onclick=async()=>{const v=document.getElementById('txt').value;try{await navigator.clipboard.writeText(v);}catch(e){document.getElementById('txt').select();document.execCommand('copy');}};</script>
-</body></html>`;
 const METHOD_ROLE_MAP={connection:'Core/Connection',ui:'UI/Design',runtime:'Backend/Runtime',diagnostics:'Diagnostics/Search',auth:'Auth/Login',validate:'Validation/QA',integration:'Integration',custom:'Custom'};
-const suggestRoleByMethod=(m)=>METHOD_ROLE_MAP[String(m||'').trim().toLowerCase()]||'Worker';
-function methodOptions(selected){
-  const cur=String(selected||'').trim().toLowerCase();
-  const items=['connection','ui','runtime','diagnostics','auth','validate','integration','custom'];
-  return items.map(v=>`<option value='${v}' ${cur===v?'selected':''}>${v}</option>`).join('');
+const suggestRoleByMethod = m => METHOD_ROLE_MAP[String(m||'').trim().toLowerCase()]||'Worker';
+function methodOptions(sel) {
+  const c=String(sel||'').trim().toLowerCase();
+  return ['connection','ui','runtime','diagnostics','auth','validate','integration','custom'].map(v=>`<option value='${v}' ${c===v?'selected':''}>${v}</option>`).join('');
 }
-const q=(s)=>{try{return document.querySelector(s)}catch(e){return null}};
-const qa=(s)=>{try{return[...document.querySelectorAll(s)]}catch(e){return[]}};
-function setText(sel,text){const el=q(sel);if(el)el.textContent=String(text??'');}
-function setVal(sel,val){const el=q(sel);if(el)el.value=String(val??'');}
-function getVal(sel,def=''){const el=q(sel);return el?el.value:def;}
-
-async function api(u,o={}){
-  const hasQ = u.includes('?');
-  const url = `${u}${hasQ?'&':'?'}_ts=${Date.now()}`;
-  const opts = Object.assign({cache:'no-store'}, o||{});
-  const r = await fetch(url, opts);
-  return await r.json();
-}
-const esc=(v)=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-function push(task,cpu,mem){if(!hist[task])hist[task]={cpu:[],mem:[]};hist[task].cpu.push(Number(cpu||0));hist[task].mem.push(Number(mem||0));while(hist[task].cpu.length>40)hist[task].cpu.shift();while(hist[task].mem.length>40)hist[task].mem.shift();}
-function spark(task){
-  const h=hist[task]||{cpu:[],mem:[]}; const c=h.cpu||[]; const m=h.mem||[];
-  if(c.length<2&&m.length<2)return `<svg class='spark' viewBox='0 0 120 22'><line x1='0' y1='18' x2='120' y2='18' stroke='#cbd8f2'/></svg>`;
-  const n=Math.max(c.length,m.length), st=120/Math.max(1,n-1);
-  const maxv = Math.max(1, ...c.map(v=>Number(v||0)), ...m.map(v=>Number(v||0)));
-  const y=(v)=>`${(18-Math.max(0,Math.min(16,(Number(v||0)/maxv)*16))).toFixed(1)}`;
-  const pc=c.map((v,i)=>`${(i*st).toFixed(1)},${y(v)}`).join(' ');
-  const pm=m.map((v,i)=>`${(i*st).toFixed(1)},${y(v)}`).join(' ');
-  return `<svg class='spark' viewBox='0 0 120 22'>
-    <polyline fill='none' stroke='#2b67dc' stroke-width='1.4' points='${pc}'/>
-    <polyline fill='none' stroke='#19a68a' stroke-width='1.4' points='${pm}'/>
-    <line x1='0' y1='18' x2='120' y2='18' stroke='#cbd8f2'/>
-  </svg>`;
-}
-function bar(cls,val){const v=Math.max(0,Math.min(100,Number(val)||0));return `<div class='bar ${cls}'><span style='width:${v}%'></span></div>`;}
-function formatTokens(n){
-  if(n==null)return'-';
-  const num=Number(n);
-  if(num>=1000000)return(num/1000000).toFixed(1)+'M';
-  if(num>=1000)return(num/1000).toFixed(1)+'K';
-  return num.toLocaleString();
-}
-function _htmlSafe(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
-function _renderPopupHtml(safeTitle,safeText,tpl){
-  const template = tpl || POPUP_TEMPLATE_FALLBACK;
-  return template.replaceAll('__TITLE__', safeTitle).replaceAll('__TEXT__', safeText);
-}
-function openViewer(title,text){
-  const t = String(text ?? '');
-  const win = window.open('', '_blank', 'width=1120,height=820,resizable=yes,scrollbars=yes');
-  if(!win){ setLogText('Popup blocked. Allow popups to view logs.'); return; }
-  const safeTitle = _htmlSafe(title || 'View');
-  const safeText = _htmlSafe(t);
-  const writePopup = (tpl)=>{
-    const html = _renderPopupHtml(safeTitle, safeText, tpl);
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-  };
-  if(popupTemplateCache !== null){
-    writePopup(popupTemplateCache);
-    return;
-  }
-  fetch(`${POPUP_TEMPLATE_URL}?_ts=${Date.now()}`, {cache:'no-store'})
-    .then((r)=>r.ok ? r.text() : Promise.reject(new Error(`popup template ${r.status}`)))
-    .then((tpl)=>{popupTemplateCache=tpl;writePopup(tpl);})
-    .catch(()=>{popupTemplateCache='';writePopup('');});
-}
-function closeViewer(){ return; }
-function setDocsText(t){ setLogText(String(t||'')); }
-function setLogText(t){
-  const el=q('#msg');
-  if(!el) return;
-  el.textContent=String(t||'');
-}
-function renderRoleSummary(items){}
-
-async function refreshTools(){}
-async function refreshPm(){
-  const d=await api('/api/pm');
-  if(!d||!d.ok)return;
-  pmState=d;
-  setText('#pmName',d.pm_name||'Codex-PM');
-  setText('#pmLast',d.last_update||'-');
-  setText('#pmProg',`${Number(d.progress||0).toFixed(1)}%`);
-}
-async function savePmName(){}
-async function refreshRuns(){
+function mkWorker(i, engine) {
+  const roster = TEAM_ROSTER[i] || {};
+  const eng = engine || roster.engine || 'codex';
   const orch=getVal('#orch','AGENT').trim().toUpperCase();
-  let d=await api('/api/runs'+(orch?`?orch=${encodeURIComponent(orch)}`:''));
-  if((!d.runs||!d.runs.length) && orch){
-    d=await api('/api/runs');
-    const first=(d.runs||[])[0];
-    if(first && first.orch_id){ setVal('#orch',first.orch_id); }
-  }
-  const s=q('#run'),cur=s?s.value:'';
-  if(!s)return;
-  s.innerHTML='';
-  (d.runs||[]).forEach(r=>{
-    const o=document.createElement('option');
-    o.value=r.name;
-    o.textContent=`${r.name} (${r.running}/${r.total})`;
-    s.appendChild(o);
-  });
-  if(cur&&qa('#run option').some(x=>x.value===cur)) s.value=cur;
-  else if(d.latest) s.value=d.latest;
+  const pf={codex:'Codex',gemini:'Gemini','claude-cli':'Claude',opus:'Opus',sonnet:'Sonnet'}[eng]||eng;
+  const role = roster.role || 'Worker';
+  const wm = {Architect:'custom','UI / Design':'ui',Frontend:'ui',Backend:'connection','API / Data':'runtime',Runtime:'runtime','Infra / DevOps':'integration','QA / Test':'validate'}[role] || 'connection';
+  return {task_id:`${orch}-T${i+1}`,enabled:true,engine:eng,owner:`${pf}-${roster.id||String.fromCharCode(65+i)}`,role,work_method:wm,repo:'orchestrator',scope_paths:[],goal:'',done_when:[],prompt_file:`orchestrator/runner/prompts/${orch}-T${i+1}.md`};
 }
-
-function mkWorker(i,engine='codex'){
-  const orch=getVal('#orch','AGENT').trim().toUpperCase();
-  const work_method=engine==='claude-cli'?'ui':'connection';
-  return {task_id:`${orch}-T${i+1}`,enabled:true,engine:engine,owner:engine==='claude-cli'?'Claude':`Codex-${String.fromCharCode(65+i)}`,role:suggestRoleByMethod(work_method),work_method,repo:'orchestrator',scope_paths:['orchestrator/dashboard.py'],goal:'',done_when:[],prompt_file:`orchestrator/runner/prompts/${orch}-T${i+1}.md`};
+function ensureCfg() {
+  if (cfg) return;
+  cfg={orch_id:getVal('#orch','AGENT').trim().toUpperCase(),workspace:'d:\\Development',defaults:{model:DEFAULT_MODEL,reasoning_effort:DEFAULT_REASON,global_prompt:'',read_only_guard:true,history_readonly_guard:true,single_run_dir:true,clean_run_dir:true,prune_legacy_runs:true,claude_cmd:'claude',claude_continue:true,claude_args:['--print','{prompt}'],claude_stdin:false},workers:[]};
 }
-function ensureCfg(){
-  if(cfg) return;
-  cfg={orch_id:getVal('#orch','AGENT').trim().toUpperCase(),workspace:'d:\\Development',defaults:{model:DEFAULT_MODEL,reasoning_effort:DEFAULT_REASON,global_prompt:'',sandbox:'workspace-write',approval:'never',search:false,read_only_guard:true,history_readonly_guard:true,single_run_dir:true,clean_run_dir:true,prune_legacy_runs:true,claude_cmd:'claude',claude_continue:true,claude_args:['--print','{prompt}'],claude_stdin:false},workers:[]};
-}
-function renderCfg(){
+function renderCfg() {
   ensureCfg();
   const box=q('#cfg');
-  if(!box)return;
-  const rows=(cfg.workers||[]).map((w,idx)=>`<div class='cfr'><div>${idx+1}</div><input type='checkbox' data-k='enabled' data-i='${idx}' ${w.enabled!==false?'checked':''}><input data-k='task_id' data-i='${idx}' value='${esc(w.task_id||'')}'><input data-k='owner' data-i='${idx}' value='${esc(w.owner||'')}'><input data-k='role' data-i='${idx}' value='${esc(w.role||'')}'><select data-k='engine' data-i='${idx}'><option value='codex' ${w.engine==='codex'?'selected':''}>codex</option><option value='gemini' ${w.engine==='gemini'?'selected':''}>gemini</option><option value='claude-cli' ${w.engine==='claude-cli'?'selected':''}>claude-cli</option><option value='claude-manual' ${w.engine==='claude-manual'?'selected':''}>claude-manual</option><option value='manual' ${w.engine==='manual'?'selected':''}>manual</option></select><select data-k='work_method' data-i='${idx}'>${methodOptions(w.work_method||'')}</select><input data-k='repo' data-i='${idx}' value='${esc(w.repo||'')}'><input data-k='prompt_file' data-i='${idx}' value='${esc(w.prompt_file||'')}'><button onclick='removeAt(${idx})'>Del</button></div>`).join('');
-  box.innerHTML=`<div class='cfr head'><div>#</div><div>on</div><div>task_id</div><div>owner</div><div>role</div><div>engine</div><div>method</div><div>repo</div><div>prompt_file</div><div>act</div></div>${rows || "<div style='padding:10px;color:var(--text-mute)'>no workers</div>"}`;
+  if(!box) return;
+  const rows=(cfg.workers||[]).map((w,i)=>`<div class='cfr'><div>${i+1}</div><input type='checkbox' data-k='enabled' data-i='${i}' ${w.enabled!==false?'checked':''}><input data-k='task_id' data-i='${i}' value='${esc(w.task_id||'')}'><input data-k='owner' data-i='${i}' value='${esc(w.owner||'')}'><input data-k='role' data-i='${i}' value='${esc(w.role||'')}'><select data-k='engine' data-i='${i}'><option value='opus' ${w.engine==='opus'?'selected':''}>opus</option><option value='sonnet' ${w.engine==='sonnet'?'selected':''}>sonnet</option><option value='codex' ${w.engine==='codex'?'selected':''}>codex</option><option value='gemini' ${w.engine==='gemini'?'selected':''}>gemini</option><option value='claude-cli' ${w.engine==='claude-cli'?'selected':''}>claude-cli</option><option value='manual' ${w.engine==='manual'?'selected':''}>manual</option></select><select data-k='work_method' data-i='${i}'>${methodOptions(w.work_method||'')}</select><input data-k='repo' data-i='${i}' value='${esc(w.repo||'')}'><input data-k='prompt_file' data-i='${i}' value='${esc(w.prompt_file||'')}'><button onclick='removeAt(${i})'>✕</button></div>`).join('');
+  box.innerHTML=`<div class='cfr head'><div>#</div><div>on</div><div>id</div><div>owner</div><div>role</div><div>engine</div><div>method</div><div>repo</div><div>prompt</div><div></div></div>${rows||"<div style='padding:var(--pad);color:var(--text-mute)'>no workers</div>"}`;
   box.querySelectorAll('input[data-k],select[data-k]').forEach(el=>{
     el.addEventListener('change', async ()=>{
-      const i=Number(el.getAttribute('data-i')||0),k=el.getAttribute('data-k');
+      const i=Number(el.dataset.i||0), k=el.dataset.k;
       if(!cfg?.workers?.[i]||!k) return;
-      if(k==='enabled'){
-        cfg.workers[i][k]=el.checked;
-        await saveCfg(true);
-      } else if(k==='work_method'){
-        cfg.workers[i][k]=el.value;
-        cfg.workers[i]['role']=suggestRoleByMethod(el.value);
-        renderCfg();
-      } else {
-        cfg.workers[i][k]=el.value;
-      }
+      if(k==='enabled'){ cfg.workers[i][k]=el.checked; await saveCfg(true); }
+      else if(k==='work_method'){ cfg.workers[i][k]=el.value; cfg.workers[i].role=suggestRoleByMethod(el.value); renderCfg(); }
+      else cfg.workers[i][k]=el.value;
     });
   });
 }
-function renumberTaskIds(){if(!cfg?.workers) return; const orch=getVal('#orch',cfg.orch_id||'AGENT').trim().toUpperCase(); cfg.workers.forEach((w,i)=>{w.task_id=`${orch}-T${i+1}`;});}
-function removeAt(i){if(!cfg?.workers) return; cfg.workers.splice(i,1); renumberTaskIds(); renderCfg();}
-function addW(engine='codex'){ensureCfg(); if((cfg.workers||[]).length>=10) return; cfg.workers.push(mkWorker(cfg.workers.length,engine)); renumberTaskIds(); renderCfg();}
-function delW(){if(!cfg?.workers?.length) return; cfg.workers.pop(); renumberTaskIds(); renderCfg();}
-function autoWorkers(n){
-  ensureCfg();
-  const m=Math.max(1,Math.min(10,Number(n)||10));
-  cfg.workers=[];
-  for(let i=0;i<m;i++){cfg.workers.push(mkWorker(i, i===1?'claude-cli':'codex'));}
-  renumberTaskIds();
-  renderCfg();
-}
-function applyWorkerCount(){ensureCfg(); const n=Math.max(1,Math.min(10,Number(getVal('#wcnt',cfg.workers.length||1)))); while(cfg.workers.length<n){cfg.workers.push(mkWorker(cfg.workers.length,'codex'));} while(cfg.workers.length>n){cfg.workers.pop();} renumberTaskIds(); renderCfg();}
-function enableAll(v){ensureCfg(); cfg.workers.forEach(w=>w.enabled=!!v); renderCfg();}
-function autoAssignRoles(){ensureCfg(); cfg.workers.forEach(w=>{const m=w.work_method||(String(w.engine||'').toLowerCase()==='claude-cli'?'ui':'connection'); w.work_method=m; w.role=suggestRoleByMethod(m);}); renderCfg();}
-function setPmDefaultsFromWorkers(){ensureCfg(); if(!cfg.defaults) cfg.defaults={}; cfg.defaults.pm_last_selected=cfg.workers.filter(w=>w.enabled!==false).map(w=>w.task_id); cfg.defaults.pm_last_request='';}
-function collectEnabledRoles(){ensureCfg(); const counts={}; cfg.workers.filter(w=>w.enabled!==false).forEach(w=>{const k=String(w.role||'Worker'); counts[k]=(counts[k]||0)+1;}); return Object.entries(counts).map(([k,v])=>`${k}:${v}`).join(', ');}
+function renumberTaskIds() { if(!cfg?.workers) return; const o=getVal('#orch',cfg.orch_id||'AGENT').trim().toUpperCase(); cfg.workers.forEach((w,i)=>{w.task_id=`${o}-T${i+1}`}) }
+function removeAt(i) { if(!cfg?.workers) return; cfg.workers.splice(i,1); renumberTaskIds(); renderCfg() }
+function addW(engine='codex') { ensureCfg(); if((cfg.workers||[]).length>=8) return; cfg.workers.push(mkWorker(cfg.workers.length,engine)); renumberTaskIds(); renderCfg() }
+function delW() { if(!cfg?.workers?.length) return; cfg.workers.pop(); renumberTaskIds(); renderCfg() }
+function autoWorkers(n) { ensureCfg(); cfg.workers=[]; const m=Math.max(1,Math.min(8,Number(n)||8)); for(let i=0;i<m;i++) cfg.workers.push(mkWorker(i)); renumberTaskIds(); renderCfg() }
+function applyWorkerCount() { ensureCfg(); const n=Math.max(1,Math.min(8,Number(getVal('#wcnt',cfg.workers.length||1)))); while(cfg.workers.length<n) cfg.workers.push(mkWorker(cfg.workers.length,'codex')); while(cfg.workers.length>n) cfg.workers.pop(); renumberTaskIds(); renderCfg() }
+function enableAll(v) { ensureCfg(); cfg.workers.forEach(w=>w.enabled=!!v); renderCfg() }
+function setPmDefaultsFromWorkers() { ensureCfg(); if(!cfg.defaults) cfg.defaults={}; cfg.defaults.pm_last_selected=cfg.workers.filter(w=>w.enabled!==false).map(w=>w.task_id); cfg.defaults.pm_last_request='' }
 
-async function loadCfg(){
+async function loadCfg() {
   const orch=getVal('#orch','AGENT').trim().toUpperCase();
   const d=await api(`/api/config/${encodeURIComponent(orch)}`);
-  if(!d.ok){setLogText(`load config failed: ${d.error||''}`); return;}
-  cfg=d.config||{};
-  setVal('#orch',cfg.orch_id||orch);
+  if(!d.ok){ setLogText(`config: ${d.error||'fail'}`); return }
+  cfg=d.config||{}; setVal('#orch',cfg.orch_id||orch);
   if(!cfg.defaults) cfg.defaults={};
   if(!Array.isArray(cfg.workers)) cfg.workers=[];
   renderCfg();
 }
-
-async function saveCfg(silent=false){
+async function saveCfg(silent=false) {
   ensureCfg();
   cfg.orch_id=getVal('#orch',cfg.orch_id||'AGENT').trim().toUpperCase();
   if(!cfg.defaults) cfg.defaults={};
-  cfg.defaults.model=DEFAULT_MODEL;
-  cfg.defaults.reasoning_effort=DEFAULT_REASON;
-  cfg.defaults.global_prompt=cfg.defaults.global_prompt||'';
-  cfg.defaults.read_only_guard = cfg.defaults.read_only_guard !== false;
-  cfg.defaults.history_readonly_guard = cfg.defaults.history_readonly_guard !== false;
-  cfg.defaults.claude_cmd=cfg.defaults.claude_cmd||'claude';
-  cfg.defaults.claude_continue = cfg.defaults.claude_continue !== false;
-  cfg.defaults.claude_args=Array.isArray(cfg.defaults.claude_args)?cfg.defaults.claude_args:['--print','{prompt}'];
+  Object.assign(cfg.defaults, { model:cfg.defaults.model||'gpt-5.3-codex', reasoning_effort:cfg.defaults.reasoning_effort||'xhigh', read_only_guard:cfg.defaults.read_only_guard!==false, history_readonly_guard:cfg.defaults.history_readonly_guard!==false, claude_cmd:cfg.defaults.claude_cmd||'claude', claude_continue:cfg.defaults.claude_continue!==false, claude_args:Array.isArray(cfg.defaults.claude_args)?cfg.defaults.claude_args:['--print','{prompt}'] });
   setPmDefaultsFromWorkers();
   const d=await api('/api/config/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orch_id:cfg.orch_id,config:cfg})});
   if(!silent) setLogText(d.ok?`saved: ${d.path}`:`save failed: ${d.error||''}`);
   return !!d.ok;
 }
 
-function renderWorkers(arr){
-  const body=q('#wb');
-  if(!body)return;
-  const pmRows = pmState ? [{
-    task_id: `${String(pmState.orch||'AGENT')}-PM`,
-    owner: String(pmState.pm_name||'Codex-PM'),
-    role: 'PM/Orchestrator',
-    engine: 'pm',
-    pid: Number(pmState.pid||0) || '-',
-    state: ((arr||[]).some(x=>String(x.state||'').toUpperCase()==='RUNNING') ? 'RUNNING' : 'IDLE'),
-    metrics: pmState.metrics || {cpu_percent:0,rss_mb:0},
-    progress: Number(pmState.progress||0),
-    tokens: {total: null},
-    activity: `progress_source=${String(pmState.progress_source||'master_tasks')}`,
-    docs_count: 1,
-    _pm: true,
-  }] : [];
-  const rows = [...pmRows, ...(arr||[])];
-  body.innerHTML=rows.map(w=>{
+// ── Render workers (simplified 7-column table) ──
+function renderWorkers(arr) {
+  const body = q('#wb');
+  if (!body) return;
+  const rows = arr || [];
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan='5' style='padding:var(--pad);color:var(--text-mute)'>활성 런이 없습니다</td></tr>`;
+    renderWorkerScene([]);
+    return;
+  }
+  body.innerHTML = rows.map(w => {
     const cpu=Number(w.metrics?.cpu_percent||0), mem=Number(w.metrics?.rss_mb||0), prog=Number(w.progress||0);
     const state=String(w.state||'').toUpperCase();
+    const actText = String(w.activity||'');
+    if (actText && actText!=='-' && prevActivity[w.task_id]!==actText) { addFeedLine(w.task_id, actText); prevActivity[w.task_id]=actText }
+    const prev = prevStates[w.task_id];
+    if (prev && prev!==state) { notifyStateChange(w.task_id, prev, state); if(state==='DONE'||state==='FAILED') addFeedLine(w.task_id, `▶ ${prev} → ${state}`) }
+    prevStates[w.task_id] = state;
 
-    const actText = String(w.activity || '');
-    if (actText && actText !== '-' && prevActivity[w.task_id] !== actText) {
-      addFeedLine(w.task_id, actText);
-      prevActivity[w.task_id] = actText;
-    }
+    // Worker cell: task_id + role (from roster or engine fallback)
+    const rosterMatch = TEAM_ROSTER.find(r => r.engine === String(w.engine||'').toLowerCase());
+    const roleText = w.role || (rosterMatch ? rosterMatch.role : w.engine) || w.engine;
+    const wCell = `<td class='w-name'><div class='w-id'>${esc(w.task_id)}</div><div class='w-role'>${esc(roleText)}</div></td>`;
 
-    const stClass = (state==='RUNNING' || state==='DONE') ? 'ok' : ((state==='EXITED' || state==='BLOCKED') ? 'warn' : 'bad');
-    const stBg = (state==='RUNNING'||state==='DONE') ? 'background:#ecfdf5' : ((state==='EXITED'||state==='BLOCKED') ? 'background:#fefce8' : (state==='ERROR'?'background:#fef2f2':''));
-    const stHint = w.state_hint ? `<div style='font-size:11px;color:var(--text-mute)'>${esc(w.state_hint)}</div>` : '';
-    
-    let stateDisplay = esc(state || '-');
-    if (state === 'RUNNING') {
-      if (!workerStartTimes[w.task_id]) {
-        workerStartTimes[w.task_id] = Date.now();
-      }
-      const elapsed = Math.floor((Date.now() - workerStartTimes[w.task_id]) / 1000);
-      const min = Math.floor(elapsed / 60);
-      const sec = elapsed % 60;
-      const elapsedStr = min > 0 ? `${min}m ${sec}s` : `${sec}s`;
-      stateDisplay = `<span class='state-pulse'></span>${esc(state)} <span class='elapsed'>${elapsedStr}</span>`;
-    } else {
-      delete workerStartTimes[w.task_id];
-    }
+    // State cell
+    const stClass = (state==='RUNNING'||state==='DONE')?'ok':(state==='EXITED'||state==='BLOCKED')?'warn':'bad';
+    let stHtml = esc(state||'-');
+    if (state==='RUNNING') {
+      if (!workerStartTimes[w.task_id]) workerStartTimes[w.task_id]=Date.now();
+      const sec=Math.floor((Date.now()-workerStartTimes[w.task_id])/1000);
+      const m=Math.floor(sec/60), s=sec%60;
+      stHtml = `<span class='state-pulse'></span>${state} <span class='elapsed'>${m>0?m+'m ':''}${s}s</span>`;
+    } else { delete workerStartTimes[w.task_id] }
+    const stCell = `<td class='${stClass}'>${stHtml}</td>`;
 
-    const cpuCell = `${bar('cpu',cpu)}<div>${cpu.toFixed(1)}%</div>`;
-    const memCell = `${bar('mem',Math.min(100,mem/20))}<div>${mem.toFixed(1)}MB</div>`;
-    const tokTotal = w.tokens && w.tokens.total != null ? Number(w.tokens.total) : null;
-    const tokenCell = formatTokens(tokTotal);
-    const logBtn = w._pm
-      ? `<button onclick='viewPmLog()'>View</button>`
-      : `<button onclick='viewLog("${esc(w.task_id)}")'>View</button>`;
-    const docsBtn = w._pm
-      ? `<button onclick='viewPmDocs()'>1</button>`
-      : `<button onclick='viewDocs("${esc(w.task_id)}")'>${Number(w.docs_count||0)}</button>`;
-    
-    const progBar = (state === 'RUNNING') ? bar('prog running-shimmer', prog) : bar('prog', prog);
-    const actClass = (state === 'RUNNING') ? 'activity is-active' : 'activity';
+    // Progress cell
+    const pBar = state==='RUNNING' ? bar('prog running-shimmer',prog) : bar('prog',prog);
+    const pCell = `<td>${pBar}<div style='font-weight:700'>${prog.toFixed(0)}%</div></td>`;
 
-    return `<tr><td>${esc(w.task_id)}</td><td>${esc(w.owner)}</td><td>${esc(w.role)}</td><td>${esc(w.engine)}</td><td>${w.pid??''}</td><td class='${stClass}' style='${stBg}'>${stateDisplay}</td><td>${cpuCell}</td><td>${memCell}</td><td>${progBar}<div style='font-size:14px;font-weight:700'>${prog.toFixed(1)}%</div></td><td>${tokenCell}</td><td><div class='${actClass}' title='${esc(w.activity||'')}'>${esc(w.activity||'-')}</div></td><td>${logBtn}${stHint}</td><td>${docsBtn}</td></tr>`;
+    // Token cell
+    const tokT = w.tokens?.total!=null ? Number(w.tokens.total) : null;
+    const cost = estimateCost(w.engine, w.tokens);
+    const costS = cost>0 ? `<div style='font-size:var(--fs-xs);color:var(--text-mute)'>$${cost.toFixed(3)}</div>` : '';
+    const tCell = `<td>${formatTokens(tokT)}${costS}</td>`;
+
+    // Actions cell
+    const stopB = (state==='RUNNING'&&w.pid) ? `<button class='btn-stop-worker' onclick='stopWorker("${esc(w.task_id)}",${w.pid})' title='Stop'>■</button>` : '';
+    const logB = `<button class='act-btn' onclick='viewLog("${esc(w.task_id)}")'>Log</button>`;
+    const actCell = `<td>${stopB}${logB}</td>`;
+
+    const runAttr = state==='RUNNING' ? ' data-running' : '';
+    return `<tr data-task='${esc(w.task_id)}'${runAttr}>${wCell}${stCell}${pCell}${tCell}${actCell}</tr>`;
   }).join('');
   renderWorkerScene(arr);
 }
-function renderManual(arr){}
 
-async function loadRun(){
-  const runEl=q('#run');
-  if(!runEl||!runEl.value)return;
-  const run=runEl.value;
-  const d=await api(`/api/run/${encodeURIComponent(run)}/status`);
-  if(!d.ok){setLogText(`status failed: ${d.error||''}`);return;}
-  const s=d.summary||{};
-  updateKpiWithAnimation('#m1',String(s.running||0));
-  updateKpiWithAnimation('#m2',String(s.total||0));
-  updateKpiWithAnimation('#m5',formatTokens(s.tokens_total||0));
-  renderWorkers(d.workers||[]);
+// ── PM & Runs ──
+async function refreshPm() {
+  const d=await api('/api/pm');
+  if(!d?.ok) return;
+  pmState=d;
+  setText('#pmName', d.pm_name||'Opus-PM');
+  setText('#pmProg', `${Number(d.progress||0).toFixed(0)}%`);
+}
+async function refreshRuns() {
+  const orch=getVal('#orch','AGENT').trim().toUpperCase();
+  let d=await api('/api/runs'+(orch?`?orch=${encodeURIComponent(orch)}`:''));
+  if((!d.runs||!d.runs.length)&&orch){ d=await api('/api/runs'); const f=(d.runs||[])[0]; if(f?.orch_id) setVal('#orch',f.orch_id) }
+  const s=q('#run'),cur=s?s.value:'';
+  if(!s) return;
+  s.innerHTML='';
+  (d.runs||[]).forEach(r=>{ const o=document.createElement('option'); o.value=r.name; o.textContent=`${r.name} (${r.running}/${r.total})`; s.appendChild(o) });
+  if(cur&&qa('#run option').some(x=>x.value===cur)) s.value=cur;
+  else if(d.latest) s.value=d.latest;
 }
 
-async function viewLog(task){
+// ── Load run ──
+async function loadRun() {
   const runEl=q('#run');
-  if(!runEl||!runEl.value||!task) return;
-  const run=runEl.value;
+  if(!runEl?.value) return;
+  const d=await api(`/api/run/${encodeURIComponent(runEl.value)}/status`);
+  if(!d.ok){ setLogText(`status: ${d.error||'fail'}`); return }
+  const s=d.summary||{};
+  updateKpi('#m1', String(s.running||0));
+  updateKpi('#m2', String(s.total||0));
+  updateKpi('#m5', formatTokens(s.tokens_total||0));
+  const workers = d.workers||[];
+  let totalCost=0;
+  for (const w of workers) totalCost += estimateCost(w.engine, w.tokens);
+  updateKpi('#m6', totalCost>0 ? `$${totalCost.toFixed(2)}` : '$0');
+  renderWorkers(workers);
+}
+
+// ── Log / Docs viewers ──
+async function viewLog(task) {
+  const run=q('#run')?.value; if(!run||!task) return;
   const d=await api(`/api/run/${encodeURIComponent(run)}/log/${encodeURIComponent(task)}?tail=240`);
-  if(!d.ok){setLogText(`log failed: ${d.error||''}`);return;}
-  setLogText(`${task} log opened`);
+  if(!d.ok){ setLogText(`log: ${d.error||'fail'}`); return }
   openViewer(`${task} log`, d.text||'');
 }
-async function viewDocs(task){
-  const runEl=q('#run');
-  if(!runEl||!runEl.value||!task) return;
-  const run=runEl.value;
+async function viewDocs(task) {
+  const run=q('#run')?.value; if(!run||!task) return;
   const d=await api(`/api/run/${encodeURIComponent(run)}/documents?task=${encodeURIComponent(task)}`);
-  if(!d.ok){setLogText(`docs failed: ${d.error||''}`);return;}
-  const t=(d.tasks||[])[0];
-  const docs=t?.documents||[];
-  if(!docs.length){openViewer(`${task} docs`, "(no docs)");return;}
-  const lines = docs.map(x=>`${x.kind}\t${x.path}\t${x.size}\t${x.mtime}`).join('\n');
-  setLogText(`${task} docs opened (${docs.length})`);
-  openViewer(`${task} docs`, lines);
-}
-async function viewPmLog(){
-  const d=await api('/api/read?path='+encodeURIComponent('orchestrator/status_report.md'));
-  if(!d.ok){setLogText(`read failed: ${d.error||''}`);return;}
-  setLogText('PM status_report opened');
-  openViewer('PM Status Report', d.text||'');
-}
-async function viewPmDocs(){
-  const docs=[
-    'orchestrator/master_tasks.md',
-    'orchestrator/integration.md',
-    'orchestrator/inbox.md',
-    'orchestrator/results.md',
-    'orchestrator/status_report.md',
-  ];
-  setLogText('PM docs list opened');
-  openViewer('PM docs', docs.join('\n'));
-}
-async function viewPath(path){
-  const d=await api(`/api/read?path=${encodeURIComponent(path)}`);
-  if(!d.ok){openViewer('read failed', d.error||'');return;}
-  openViewer(d.path||'file', d.text||'');
+  if(!d.ok){ setLogText(`docs: ${d.error||'fail'}`); return }
+  const docs=(d.tasks||[])[0]?.documents||[];
+  if(!docs.length){ openViewer(`${task} docs`,'(no docs)'); return }
+  openViewer(`${task} docs`, docs.map(x=>`${x.kind}\t${x.path}\t${x.size}\t${x.mtime}`).join('\n'));
 }
 
-async function startRun(dry=false){
+// ── Start / Stop ──
+async function startRun(dry=false, pmReq='') {
   const ok=await saveCfg(true);
-  if(!ok){setLogText('start blocked: config save failed');return;}
+  if(!ok){ setLogText('start blocked: config save failed'); return }
   const orch=getVal('#orch','AGENT').trim().toUpperCase();
-  const maxW=Math.max(1,Math.min(10,cfg?.workers?.length||1));
-  const d=await api('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orch_id:orch,model:DEFAULT_MODEL,reasoning_effort:DEFAULT_REASON,pm_request:'',pm_delegate:true,min_workers:1,max_workers:maxW,dry_run:!!dry})});
-  setLogText((d.stdout||'') + (d.stderr?`\n${d.stderr}`:''));
-  await refreshRuns();
-  await loadRun();
+  const maxW=Math.max(1,Math.min(8,cfg?.workers?.length||1));
+  const req=String(pmReq||'').trim();
+  const model = cfg?.defaults?.model || 'gpt-5.3-codex';
+  const reason = cfg?.defaults?.reasoning_effort || 'xhigh';
+  const d=await api('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orch_id:orch,model,reasoning_effort:reason,pm_request:req,pm_delegate:true,min_workers:1,max_workers:maxW,dry_run:!!dry})});
+  setLogText((d.stdout||'')+(d.stderr?` ${d.stderr}`:''));
+  if(req) addFeedLine('PM',`요청: ${req}`);
+  await refreshRuns(); await loadRun();
 }
-async function distributeAndStart(){await startRun(false);}
-async function stopRun(){
-  const runEl=q('#run');
-  if(!runEl||!runEl.value)return;
-  const run=runEl.value;
+async function startRunWithRequest() { await startRun(false, getVal('#pmReq','').trim()) }
+async function stopRun() {
+  const run=q('#run')?.value; if(!run) return;
   const d=await api('/api/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run_name:run})});
-  setLogText((d.stdout||'') + (d.stderr?`\n${d.stderr}`:''));
-  await refreshRuns();
-  await loadRun();
+  setLogText((d.stdout||'')+(d.stderr?` ${d.stderr}`:''));
+  await refreshRuns(); await loadRun();
 }
 
-function setAuto(){
-  if(timer){clearInterval(timer);timer=null;}
-  timer=setInterval(()=>refreshAll(), 3000);
-}
-async function refreshAll(){
-  const jobs = [refreshPm(), refreshRuns()];
-  await Promise.all(jobs.map(p => p.catch(()=>{})));
+// ── Auto refresh ──
+function setAuto() { if(timer) clearInterval(timer); timer=setInterval(()=>refreshAll(), 3000) }
+async function refreshAll() {
+  await Promise.all([refreshPm(), refreshRuns()].map(p=>p.catch(()=>{})));
   if(!cfg) await loadCfg();
   await loadRun();
   tailWorkerLogs().catch(()=>{});
 }
 
-window.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeViewer();});
-window.addEventListener('load',async()=>{addFeedLine('SYSTEM', 'Dashboard connected. Monitoring workers...');await refreshAll();setAuto();});
+window.addEventListener('load', async () => {
+  requestNotificationPermission();
+  addFeedLine('SYSTEM','Dashboard connected');
+  await refreshAll();
+  setAuto();
+});

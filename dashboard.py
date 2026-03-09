@@ -80,7 +80,7 @@ def _save_pm_settings(payload: dict[str, Any]) -> tuple[bool, str]:
 def _pm_status() -> dict[str, Any]:
     status_path = ROOT / "status_report.md"
     master_path = ROOT / "master_tasks.md"
-    pm_name = "Codex-PM"
+    pm_name = "Opus-PM"
     orch = ""
     last_update = ""
     last_line = ""
@@ -863,8 +863,8 @@ def _start(payload: dict[str, Any]) -> dict[str, Any]:
 
     if isinstance(payload.get("config"), dict):
         workers = payload["config"].get("workers", [])
-        if isinstance(workers, list) and len(workers) > 10:
-            return {"ok": False, "error": "workers limit exceeded (max 10)"}
+        if isinstance(workers, list) and len(workers) > 8:
+            return {"ok": False, "error": "workers limit exceeded (max 8)"}
         ok, detail = _save_json(_tasks_file(orch), payload["config"])
         if not ok:
             return {"ok": False, "error": detail}
@@ -885,13 +885,13 @@ def _start(payload: dict[str, Any]) -> dict[str, Any]:
     pm_request = str(payload.get("pm_request", "")).strip()
     pm_delegate = bool(payload.get("pm_delegate")) or bool(pm_request)
     min_workers = int(payload.get("min_workers", 1) or 1)
-    max_workers = int(payload.get("max_workers", 10) or 10)
+    max_workers = int(payload.get("max_workers", 8) or 8)
     if pm_delegate:
         cmd.append("-PmDelegate")
     if pm_request:
         cmd += ["-PmRequest", pm_request]
     if pm_delegate:
-        cmd += ["-MinWorkers", str(max(1, min_workers)), "-MaxWorkers", str(max(1, min(10, max_workers)))]
+        cmd += ["-MinWorkers", str(max(1, min_workers)), "-MaxWorkers", str(max(1, min(8, max_workers)))]
     if bool(payload.get("dry_run")):
         cmd.append("-DryRun")
     p = subprocess.run(
@@ -921,6 +921,31 @@ def _stop(payload: dict[str, Any]) -> dict[str, Any]:
         creationflags=_no_window_flags(),
     )
     return {"ok": p.returncode == 0, "code": p.returncode, "stdout": p.stdout, "stderr": p.stderr}
+
+
+def _stop_worker(payload: dict[str, Any]) -> dict[str, Any]:
+    """Stop a single worker by PID."""
+    pid = payload.get("pid")
+    task_id = str(payload.get("task_id", "")).strip()
+    if not pid:
+        return {"ok": False, "error": "pid is required"}
+    pid = int(pid)
+    if not _pid_running(pid):
+        return {"ok": False, "error": f"PID {pid} is not running"}
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                capture_output=True,
+                text=True,
+                creationflags=_no_window_flags(),
+            )
+        else:
+            import signal
+            os.kill(pid, signal.SIGTERM)
+        return {"ok": True, "message": f"Stopped {task_id} (PID {pid})"}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1039,6 +1064,37 @@ class Handler(BaseHTTPRequestHandler):
                 log_path = RUNS_ROOT / run_name_unquoted / f"{task_id_unquoted}.log"
             self._json({"ok": True, "text": _tail(log_path, n)})
             return
+        if p.path == "/api/list-dirs":
+            qs = parse_qs(p.query)
+            base = (qs.get("path") or [""])[0].strip()
+            if not base:
+                base = str(WORKSPACE)
+            base_path = Path(base).resolve()
+            if not base_path.is_dir():
+                self._json({"ok": False, "error": "not a directory"}, HTTPStatus.BAD_REQUEST)
+                return
+            dirs: list[dict[str, str]] = []
+            parent = str(base_path.parent) if base_path.parent != base_path else ""
+            try:
+                for entry in sorted(base_path.iterdir()):
+                    if entry.name.startswith(".") or entry.name.startswith("$"):
+                        continue
+                    if entry.is_dir():
+                        dirs.append({"name": entry.name, "path": str(entry)})
+            except PermissionError:
+                pass
+            # also list drives on Windows
+            drives: list[str] = []
+            if sys.platform == "win32" and str(base_path) == str(base_path.anchor):
+                try:
+                    bitmask = ctypes.windll.kernel32.GetLogicalDrives()  # type: ignore[union-attr]
+                    for i in range(26):
+                        if bitmask & (1 << i):
+                            drives.append(f"{chr(65 + i)}:\\")
+                except Exception:
+                    pass
+            self._json({"ok": True, "current": str(base_path), "parent": parent, "dirs": dirs, "drives": drives})
+            return
         if p.path == "/api/read":
             qs = parse_qs(p.query)
             path_raw = (qs.get("path") or [""])[0]
@@ -1059,6 +1115,9 @@ class Handler(BaseHTTPRequestHandler):
         if p.path == "/api/stop":
             self._json(_stop(body))
             return
+        if p.path == "/api/stop-worker":
+            self._json(_stop_worker(body))
+            return
         if p.path == "/api/pm/save":
             pm_name = str(body.get("pm_name", "")).strip()
             if not pm_name:
@@ -1074,8 +1133,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": False, "error": "config must be object"}, HTTPStatus.BAD_REQUEST)
                 return
             workers = config.get("workers", [])
-            if isinstance(workers, list) and len(workers) > 10:
-                self._json({"ok": False, "error": "workers limit exceeded (max 10)"}, HTTPStatus.BAD_REQUEST)
+            if isinstance(workers, list) and len(workers) > 8:
+                self._json({"ok": False, "error": "workers limit exceeded (max 8)"}, HTTPStatus.BAD_REQUEST)
                 return
             ok, detail = _save_json(_tasks_file(orch), config)
             self._json({"ok": True, "path": detail} if ok else {"ok": False, "error": detail}, HTTPStatus.OK if ok else HTTPStatus.BAD_REQUEST)

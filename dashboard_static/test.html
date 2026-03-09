@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang='ko'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Office Scene Test</title>
+<link rel='stylesheet' href='style.css'>
+<style>
+  body { margin:0; background:#f1f5f9; }
+  .worker-scene { width:100vw; height:100vh; }
+</style>
+</head>
+<body>
+<div class='worker-scene' id='worker-scene'></div>
+<script src='office_scene.js'></script>
+<script>
+const TEAM_ROSTER = [
+  { id:'OPUS-1',   engine:'opus',   ver:'4.6', role:'Architect',       hair:'hair-parted',  hairColor:'#374151', skin:'#fcd9bd', shirt:'#2d2d3d', chair:'#b91c1c', badge:'#dc2626' },
+  { id:'SONNET-1', engine:'sonnet', ver:'4.6', role:'UI / Design',     hair:'hair-long',    hairColor:'#92400e', skin:'#fde68a', shirt:'#7c3aed', chair:'#8b5cf6', badge:'#7c3aed' },
+  { id:'SONNET-2', engine:'sonnet', ver:'4.6', role:'Frontend',        hair:'hair-ponytail',hairColor:'#7c2d12', skin:'#fcd9bd', shirt:'#6d28d9', chair:'#a78bfa', badge:'#7c3aed' },
+  { id:'CODEX-1',  engine:'codex',  ver:'5.3', role:'Backend',         hair:'hair-spiky',   hairColor:'#1a1a2e', skin:'#f5cba7', shirt:'#2d4b9b', chair:'#3b82f6', badge:'#2d4b9b' },
+  { id:'CODEX-2',  engine:'codex',  ver:'5.3', role:'API / Data',      hair:'hair-curly',   hairColor:'#374151', skin:'#deb887', shirt:'#1e40af', chair:'#60a5fa', badge:'#2d4b9b' },
+  { id:'CODEX-3',  engine:'codex',  ver:'5.3', role:'Runtime',         hair:'hair-mohawk',  hairColor:'#1e293b', skin:'#f5cba7', shirt:'#1d4ed8', chair:'#93c5fd', badge:'#2d4b9b' },
+  { id:'CODEX-4',  engine:'codex',  ver:'5.3', role:'Infra / DevOps',  hair:'hair-bun',     hairColor:'#0f172a', skin:'#fcd9bd', shirt:'#2563eb', chair:'#3b82f6', badge:'#2d4b9b' },
+  { id:'GEMINI-1', engine:'gemini', ver:'2.5', role:'QA / Test',       hair:'hair-short',   hairColor:'#d97706', skin:'#deb887', shirt:'#059669', chair:'#10b981', badge:'#059669' },
+];
+
+const BUBBLE_MSGS = {
+  'opus':   ['설계 중!','리뷰!','아키텍처..','분석!'],
+  'sonnet': ['디자인~','styling!','레이아웃!','UI!'],
+  'codex':  ['코딩 중..','building!','fixing..','분석!'],
+  'gemini': ['테스트~','검증!','QA!','체크!'],
+  'default':['작업 중..','working!','처리!','busy!'],
+};
+
+const scene = document.getElementById('worker-scene');
+const canvas = document.createElement('canvas');
+canvas.style.width = '100%';
+canvas.style.height = '100%';
+canvas.style.display = 'block';
+scene.appendChild(canvas);
+
+function resize() {
+  const rect = scene.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  canvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// 8명 전원 RUNNING, 진행률 랜덤
+const assigned = TEAM_ROSTER.map((r,i) => ({
+  task_id: 'TASK-'+(i+1),
+  engine: r.engine,
+  state: 'RUNNING',
+  progress: Math.round(15 + Math.random()*70),
+}));
+
+// 애니메이션 루프 6fps
+setInterval(() => {
+  ISO.render(canvas, TEAM_ROSTER, assigned, BUBBLE_MSGS);
+}, 166);
+ISO.render(canvas, TEAM_ROSTER, assigned, BUBBLE_MSGS);
+</script>
+</body>
+</html>

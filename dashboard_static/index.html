@@ -7,63 +7,241 @@
 <link rel='stylesheet' href='/static/style.css'>
 </head>
 <body>
+
+<!-- ── TOP BAR: controls integrated ── -->
 <div class='top'>
   <div class='top-brand'>
-    <div class='top-logo'>A</div>
-    <div>
-      <div class='top-title'>Orchestrator Dashboard</div>
-      <div class='top-subtitle'>Facility Integrated Control</div>
-    </div>
+    <div class='top-logo'>O</div>
+    <div class='top-title'>Orchestrator</div>
   </div>
-  <div class='row'>
-    <button onclick='refreshAll()'>Refresh</button>
+  <div class='top-controls'>
+    <input id='orch' value='AGENT' class='ctl-input ctl-orch' placeholder='ORCH'>
+    <select id='run' onchange='loadRun()' class='ctl-input ctl-run'></select>
+    <button onclick='refreshRuns()' class='ctl-btn-icon' title='Refresh runs'>&#x27F3;</button>
+    <div class='ctl-sep'></div>
+    <input id='pmReq' placeholder='PM 요청사항...' class='ctl-input ctl-req'>
+    <button onclick='startRunWithRequest()' class='ctl-btn ctl-start'>Start</button>
+    <button onclick='stopRun()' class='ctl-btn ctl-stop'>Stop</button>
+    <button onclick='refreshAll()' class='ctl-btn-icon' title='Refresh all'>&#x21BB;</button>
+    <button onclick='openSettings()' class='ctl-btn-icon' title='Settings'>&#x2699;</button>
   </div>
 </div>
-<div class='wrap'>
-  <div class='left'>
-    <div class='card'>
-      <div class='row'>
-        <input id='orch' value='AGENT' style='width:90px'>
-        <select id='run' onchange='loadRun()' style='width:240px'></select>
-        <button onclick='refreshRuns()' style='padding:0 6px'>&#x27F3;</button>
-      </div>
-      <div class='row' style='margin-top:10px'>
-        <button onclick='startRun(false)'>Start</button>
-        <button onclick='stopRun()' class='btn-danger'>Stop</button>
-      </div>
+
+<!-- ── SETTINGS MODAL ── -->
+<div class='modal-overlay' id='settingsOverlay' onclick='closeSettings(event)'>
+  <div class='modal-box' onclick='event.stopPropagation()'>
+    <div class='modal-header'>
+      <span>Settings</span>
+      <button class='modal-close' onclick='closeSettings()'>&times;</button>
     </div>
-    <div class='worker-scene' id='worker-scene'></div>
-    <div class='card' style='display:grid;grid-template-rows:auto 1fr;gap:8px;min-height:0'>
-      <div style='font-size:14px;font-weight:800'>Worker / Role Planner</div>
-      <div class='cfg' id='cfg'></div>
+    <div class='modal-body'>
+
+      <!-- Workspace -->
+      <div class='set-group'>
+        <label class='set-label'>Workspace Path</label>
+        <div class='set-row' style='gap:4px'>
+          <input id='setWorkspace' class='set-input' style='flex:1' readonly>
+          <button class='ctl-btn-icon' style='width:auto;padding:0 8px;flex-shrink:0' onclick='openDirBrowser()' title='Browse'>&#128193;</button>
+        </div>
+        <div class='dir-browser' id='dirBrowser'>
+          <div class='dir-breadcrumb' id='dirBreadcrumb'></div>
+          <div class='dir-list' id='dirList'></div>
+        </div>
+      </div>
+
+      <!-- General -->
+      <div class='set-section'>General</div>
+      <div class='set-row'>
+        <div class='set-group'>
+          <label class='set-label'>Reasoning Effort</label>
+          <select id='setReasoning' class='set-input'>
+            <option value='low'>Low</option>
+            <option value='medium'>Medium</option>
+            <option value='high'>High</option>
+            <option value='xhigh'>XHigh</option>
+          </select>
+        </div>
+        <div class='set-group'>
+          <label class='set-label'>Read-Only Guard</label>
+          <select id='setReadOnly' class='set-input'>
+            <option value='true'>On</option>
+            <option value='false'>Off</option>
+          </select>
+        </div>
+      </div>
+      <div class='set-group'>
+        <label class='set-label'>Global Prompt</label>
+        <textarea id='setGlobalPrompt' class='set-textarea' rows='3' placeholder='All workers receive this prompt...'></textarea>
+      </div>
+
+      <!-- Claude -->
+      <div class='set-section'>Claude (Opus / Sonnet)</div>
+      <div class='set-row'>
+        <div class='set-group'>
+          <label class='set-label'>Model</label>
+          <select id='setClaudeModel' class='set-input'>
+            <option value='claude-opus-4-6'>Opus 4.6</option>
+            <option value='claude-sonnet-4-6'>Sonnet 4.6</option>
+            <option value='claude-haiku-4-5-20251001'>Haiku 4.5</option>
+          </select>
+        </div>
+        <div class='set-group'>
+          <label class='set-label'>CLI Command</label>
+          <input id='setClaudeCmd' class='set-input' placeholder='claude'>
+        </div>
+      </div>
+      <div class='set-row'>
+        <div class='set-group'>
+          <label class='set-label'>CLI Args</label>
+          <input id='setClaudeArgs' class='set-input' placeholder='--print'>
+        </div>
+        <div class='set-group'>
+          <label class='set-label'>Permission Mode</label>
+          <select id='setClaudePermission' class='set-input'>
+            <option value='bypassPermissions'>Bypass</option>
+            <option value='default'>Default (ask)</option>
+          </select>
+        </div>
+      </div>
+      <div class='set-row'>
+        <label class='set-check'><input type='checkbox' id='setStdin'> Stdin Mode</label>
+        <label class='set-check'><input type='checkbox' id='setAutoApprove'> Auto Approve</label>
+        <label class='set-check'><input type='checkbox' id='setContinue'> Continue Session</label>
+      </div>
+
+      <!-- Codex -->
+      <div class='set-section'>Codex (GPT)</div>
+      <div class='set-row'>
+        <div class='set-group'>
+          <label class='set-label'>Model</label>
+          <select id='setCodexModel' class='set-input'>
+            <option value='codex-5.4'>Codex 5.4</option>
+            <option value='gpt-5.3-codex'>Codex 5.3</option>
+            <option value='o4-mini'>o4-mini</option>
+          </select>
+        </div>
+        <div class='set-group'>
+          <label class='set-label'>Sandbox</label>
+          <select id='setSandbox' class='set-input'>
+            <option value='danger-full-access'>Full Access (danger)</option>
+            <option value='read-only'>Read Only</option>
+            <option value='network-only'>Network Only</option>
+          </select>
+        </div>
+      </div>
+      <div class='set-row'>
+        <div class='set-group'>
+          <label class='set-label'>Approval</label>
+          <select id='setApproval' class='set-input'>
+            <option value='never'>Never (auto)</option>
+            <option value='always'>Always</option>
+            <option value='suggest'>Suggest</option>
+          </select>
+        </div>
+        <label class='set-check' style='flex:1;align-self:flex-end;padding-bottom:4px'><input type='checkbox' id='setBypass'> Dangerously Bypass</label>
+      </div>
+
+      <!-- Gemini -->
+      <div class='set-section'>Gemini</div>
+      <div class='set-row'>
+        <div class='set-group'>
+          <label class='set-label'>Model</label>
+          <select id='setGeminiModel' class='set-input'>
+            <option value='gemini-3.1-pro'>Gemini 3.1 Pro</option>
+            <option value='gemini-3.1-flash'>Gemini 3.1 Flash</option>
+            <option value='gemini-2.5-pro'>Gemini 2.5 Pro</option>
+          </select>
+        </div>
+        <div class='set-group'>
+          <label class='set-label'>CLI Command</label>
+          <input id='setGeminiCmd' class='set-input' placeholder='gemini'>
+        </div>
+      </div>
+
+    </div>
+    <div class='modal-footer'>
+      <button class='ctl-btn ctl-start' onclick='saveSettings()'>Save</button>
+      <button class='ctl-btn-icon' style='width:auto;padding:0 12px' onclick='closeSettings()'>Cancel</button>
     </div>
   </div>
+</div>
+
+<!-- ── MAIN LAYOUT ── -->
+<div class='wrap'>
+
+  <!-- LEFT: Scene + Config -->
+  <div class='left'>
+    <div class='worker-scene' id='worker-scene'></div>
+    <div class='panel cfg-panel'>
+      <div class='panel-header' onclick='toggleCfg()'>
+        <span>Worker Config</span>
+        <span class='panel-toggle collapsed' id='cfgToggle'>▼</span>
+      </div>
+      <div class='cfg-body collapsed' id='cfgBody'>
+        <div class='cfg' id='cfg'></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: KPI + Table + Feed -->
   <div class='right'>
-    <div class='card'>
-      <div class='kpi-row'>
-        <div class='kpi-item'><span class='kpi-label'>Running</span><span class='kpi-value' id='m1'>0</span></div>
-        <div class='kpi-item'><span class='kpi-label'>Total</span><span class='kpi-value' id='m2'>0</span></div>
-        <div class='kpi-item'><span class='kpi-label'>Tokens</span><span class='kpi-value' id='m5'>0</span></div>
+
+    <!-- KPI strip -->
+    <div class='kpi-strip'>
+      <div class='kpi-item'>
+        <span class='kpi-value' id='m1'>0</span>
+        <span class='kpi-label'>Running</span>
       </div>
-      <div class='pm' style='margin-top:12px'>
-        <div class='cell'><div class='k'>PM</div><div class='v' id='pmName'>Codex-PM</div></div>
-        <div class='cell'><div class='k'>마지막 업데이트</div><div class='v' id='pmLast'>-</div></div>
-        <div class='cell'><div class='k'>진행률</div><div class='v' id='pmProg'>0.0%</div></div>
+      <div class='kpi-item'>
+        <span class='kpi-value' id='m2'>0</span>
+        <span class='kpi-label'>Total</span>
       </div>
-      <div id='msg' class='msg'>(status)</div>
+      <div class='kpi-item'>
+        <span class='kpi-value' id='m5'>0</span>
+        <span class='kpi-label'>Tokens</span>
+      </div>
+      <div class='kpi-item'>
+        <span class='kpi-value' id='m6'>$0</span>
+        <span class='kpi-label'>Cost</span>
+      </div>
+      <div class='kpi-item kpi-progress'>
+        <span class='kpi-value' id='pmProg'>0%</span>
+        <span class='kpi-label' id='pmName'>Opus-PM</span>
+      </div>
     </div>
-    <div class='card' style='display:grid;grid-template-rows:1fr;min-height:0'>
-      <div class='tbl'><table><thead><tr><th>Task</th><th>Owner</th><th>Role</th><th>Engine</th><th>PID</th><th>State</th><th>CPU</th><th>MEM</th><th>Progress</th><th>Tokens</th><th>Activity</th><th>Log</th><th>Docs</th></tr></thead><tbody id='wb'></tbody></table></div>
+
+    <!-- Worker table -->
+    <div class='tbl-card'>
+      <div class='tbl'>
+        <table>
+          <thead><tr>
+            <th>Worker</th>
+            <th>State</th>
+            <th>Progress</th>
+            <th>Tokens</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody id='wb'></tbody>
+        </table>
+      </div>
     </div>
-    <div class='card live-feed-card'>
-      <div class='live-feed-header'>
+
+    <!-- Live feed -->
+    <div class='feed-card'>
+      <div class='feed-header'>
         <span class='live-dot'></span>
-        <span class='live-title'>LIVE ACTIVITY</span>
+        <span class='feed-title'>LIVE ACTIVITY</span>
+        <span class='feed-status' id='msg'></span>
       </div>
       <div class='live-feed' id='live-feed'></div>
     </div>
+
   </div>
 </div>
+
+<!-- <script src='/static/office_scene.js'></script> -->
+<!-- <script src='/static/tavern_scene.js'></script> -->
+<script src='/static/pixel_office.js'></script>
 <script src='/static/app.js'></script>
 </body>
 </html>
