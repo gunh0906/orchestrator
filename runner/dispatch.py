@@ -159,13 +159,12 @@ def _build_gemini_command(
     workspace: str,
     prompt: str,
     yolo: bool = True,
+    model: str = "",
+    gemini_cmd: str = "gemini",
 ) -> list[str]:
-    cmd_bin = "gemini"
-    found = shutil.which(cmd_bin)
-    if found:
-        cmd_bin = found
-    else:
-        for cand in ["gemini.cmd", "gemini.exe", "gemini.ps1"]:
+    cmd_bin = str(gemini_cmd or "gemini").strip() or "gemini"
+    if not os.path.isabs(cmd_bin):
+        for cand in [cmd_bin, "gemini", "gemini.cmd", "gemini.exe", "gemini.ps1"]:
             found = shutil.which(cand)
             if found:
                 cmd_bin = found
@@ -174,8 +173,11 @@ def _build_gemini_command(
     cmd = [cmd_bin]
     if yolo:
         cmd.append("--yolo")
-    # Use Gemini 3.1 Pro model
-    cmd.extend(["-m", "gemini-3.1-pro-preview"])
+    # Model selection: worker-level > engines config > default
+    gemini_model = model or "gemini-3.1-pro-preview"
+    cmd.extend(["-m", gemini_model])
+    # JSON output for token tracking; also avoids most AttachConsole issues
+    cmd.extend(["-o", "json"])
     # Use -p with a short instruction; full prompt goes via stdin
     cmd.extend(["-p", f"Execute the task described in stdin. Working directory: {workspace}"])
     return cmd
@@ -329,6 +331,21 @@ def _build_claude_command(
         else defaults.get("claude_stdin", False)
     )
 
+    # Model selection: worker-level > defaults.claude_model > claude-opus-4-6
+    claude_model = str(
+        worker.get("claude_model")
+        or defaults.get("claude_model")
+        or "claude-opus-4-6"
+    ).strip()
+    has_model_flag = any(a in {"--model", "-m"} for a in args)
+    if claude_model and not has_model_flag:
+        args = ["--model", claude_model, *args]
+
+    # JSON output for token tracking (usage, cost)
+    has_output_format = any(a == "--output-format" for a in args)
+    if not has_output_format:
+        args = ["--output-format", "json", *args]
+
     command: list[str]
     if cmd_bin.lower().endswith(".ps1"):
         command = [
@@ -368,6 +385,14 @@ def _no_window_flags() -> int:
         return int(getattr(subprocess, "CREATE_NO_WINDOW", 0) or 0)
     except Exception:
         return 0
+
+
+def _new_console_flags() -> int:
+    """Gemini CLI needs a real console (node-pty AttachConsole).
+    CREATE_NEW_CONSOLE = 0x10 on Windows, 0 elsewhere."""
+    if sys.platform == "win32":
+        return int(getattr(subprocess, "CREATE_NEW_CONSOLE", 0x10))
+    return 0
 
 
 def _latest_run_dir(root: Path) -> Path | None:
@@ -434,25 +459,38 @@ def main() -> int:
     orch_id = str(config.get("orch_id", "AGENT")).strip().upper() or "AGENT"
     workspace = str(config.get("workspace", str(tasks_file.parents[2])))
     defaults = config.get("defaults", {}) if isinstance(config.get("defaults", {}), dict) else {}
+    engines_cfg = config.get("engines", {}) if isinstance(config.get("engines", {}), dict) else {}
     workers = config.get("workers", [])
     if not isinstance(workers, list):
         print("[ERROR] workers must be a list")
         return 2
 
-    sandbox = str(defaults.get("sandbox", "workspace-write"))
+    # Engine-specific configs (new engines section takes priority over legacy defaults)
+    codex_ecfg = engines_cfg.get("codex", {})
+    claude_ecfg = engines_cfg.get("claude", {})
+    gemini_ecfg = engines_cfg.get("gemini", {})
+
+    sandbox = str(codex_ecfg.get("sandbox", defaults.get("sandbox", "workspace-write")))
     approval = str(defaults.get("approval", "never"))
     search = bool(defaults.get("search", False))
     read_only_guard_default = bool(defaults.get("read_only_guard", True))
     history_readonly_guard_default = bool(defaults.get("history_readonly_guard", True))
-    model = args.model or str(defaults.get("model", "gpt-5.3-codex"))
-    reasoning_effort = args.reasoning_effort or str(defaults.get("reasoning_effort", "xhigh"))
+    model = args.model or str(codex_ecfg.get("model", defaults.get("model", "gpt-5.3-codex")))
+    reasoning_effort = args.reasoning_effort or str(codex_ecfg.get("reasoning_effort", defaults.get("reasoning_effort", "high")))
     codex_cmd_default = str(
-        defaults.get("codex_cmd") or os.environ.get("CODEX_CLI_CMD") or "codex"
+        codex_ecfg.get("cmd") or defaults.get("codex_cmd") or os.environ.get("CODEX_CLI_CMD") or "codex"
     ).strip()
-    codex_dangerously_bypass_default = bool(defaults.get("codex_dangerously_bypass", False))
+    codex_dangerously_bypass_default = bool(codex_ecfg.get("dangerously_bypass", defaults.get("codex_dangerously_bypass", False)))
     single_run_dir = bool(defaults.get("single_run_dir", True))
     clean_run_dir = bool(defaults.get("clean_run_dir", True))
     prune_legacy_runs = bool(defaults.get("prune_legacy_runs", True))
+
+    # Claude engine defaults from engines config
+    claude_cmd_from_engines = str(claude_ecfg.get("cmd", "")).strip()
+    claude_model_from_engines = str(claude_ecfg.get("model", "")).strip()
+    # Gemini engine defaults
+    gemini_cmd_from_engines = str(gemini_ecfg.get("cmd", "")).strip()
+    gemini_model_from_engines = str(gemini_ecfg.get("model", "")).strip()
 
     runs_root = tasks_file.parents[1] / "runs"
     runs_root.mkdir(parents=True, exist_ok=True)
@@ -553,14 +591,34 @@ def main() -> int:
             )
             stdin_text = prompt
         elif engine == "gemini":
+            # Worker-level model > engines config model > default
+            worker_gemini_model = str(worker.get("gemini_model", "")).strip()
+            effective_gemini_model = worker_gemini_model or gemini_model_from_engines
             command = _build_gemini_command(
                 workspace=str(worker_workspace),
                 prompt=prompt,
                 yolo=True,
+                model=effective_gemini_model,
+                gemini_cmd=gemini_cmd_from_engines or defaults.get("gemini_cmd", "gemini"),
             )
             stdin_text = prompt  # send full prompt via stdin, -p has short instruction
         elif engine in {"claude", "claude-cli"}:
-            command, stdin_text, err = _build_claude_command(prompt=prompt, worker=worker, defaults=defaults)
+            # Merge engines config into defaults for claude command builder
+            # engines config takes priority over legacy defaults
+            claude_defaults = dict(defaults)
+            if claude_cmd_from_engines:
+                claude_defaults["claude_cmd"] = claude_cmd_from_engines
+            if claude_model_from_engines:
+                claude_defaults["claude_model"] = claude_model_from_engines
+            if claude_ecfg.get("args"):
+                claude_defaults["claude_args"] = claude_ecfg["args"]
+            if claude_ecfg.get("stdin") is not None:
+                claude_defaults["claude_stdin"] = claude_ecfg["stdin"]
+            if claude_ecfg.get("auto_approve") is not None:
+                claude_defaults["claude_auto_approve"] = claude_ecfg["auto_approve"]
+            if claude_ecfg.get("permission_mode"):
+                claude_defaults["claude_permission_mode"] = claude_ecfg["permission_mode"]
+            command, stdin_text, err = _build_claude_command(prompt=prompt, worker=worker, defaults=claude_defaults)
             if err:
                 print(f"[WARN] {task_id}: {err}; switched to manual")
                 worker = dict(worker)
@@ -637,6 +695,10 @@ def main() -> int:
 
         try:
             log_handle = run.log_file.open("w", encoding="utf-8", errors="replace")
+            # Strip CLAUDECODE env var so nested claude sessions can launch
+            child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+            # With -o text, gemini no longer needs a real console (node-pty bypassed)
+            flags = _no_window_flags()
             proc = subprocess.Popen(
                 run.command,
                 cwd=run.workspace,
@@ -646,7 +708,8 @@ def main() -> int:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                creationflags=_no_window_flags(),
+                creationflags=flags,
+                env=child_env,
             )
             if run.stdin_text and proc.stdin:
                 proc.stdin.write(run.stdin_text)

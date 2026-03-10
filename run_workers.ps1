@@ -1,6 +1,6 @@
 param(
     [string]$OrchId = "AGENT",
-    [string]$Model = "gpt-5.3-codex",
+    [string]$Model = "gpt-5.4",
     [string]$ReasoningEffort = "xhigh",
     [switch]$PmDelegate,
     [string]$PmRequest = "",
